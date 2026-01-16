@@ -1439,21 +1439,11 @@ function renderGeographicMap() {
   console.log("Current palette:", currentGeoPalette);
   console.log("State codes:", stateCodes.slice(0, 10), "...");
 
-  // Map palette names to D3 interpolators
-  const paletteInterpolators = {
-    default: d3.interpolateReds,
-    categorical: d3.interpolateRdYlGn,
-    warm: d3.interpolateOranges,
-    cool: d3.interpolateBlues,
-    vibrant: d3.interpolatePlasma,
-    pastel: d3.interpolatePuRd
-  };
-
-  // Create gradient color scale based on health indicator values
+  // Create categorical color scale - each state gets unique color
   const colorScale = d3
-    .scaleSequential()
-    .domain([0, d3.max(Array.from(stateData.values()), (d) => getMetricValue(d))])
-    .interpolator(paletteInterpolators[currentGeoPalette] || d3.interpolateReds);
+    .scaleOrdinal()
+    .domain(stateCodes)
+    .range(COLOR_PALETTES[currentGeoPalette]);
 
   // Projection
   const projection = d3
@@ -1541,8 +1531,8 @@ function renderGeographicMap() {
         const stateCode = String(Math.floor(parseFloat(d.id) || 0));
         const data = stateData.get(stateCode);
 
-        // Use metric value for red gradient (darker = higher prevalence)
-        return data ? colorScale(getMetricValue(data)) : "#e5e7eb";
+        // Each state gets unique color from palette
+        return data ? colorScale(stateCode) : "#e5e7eb";
       })
       .attr("opacity", 0.85)
       .on("mouseover", function (event, d) {
@@ -1766,21 +1756,11 @@ function renderSimulatedGeographic() {
     .nice()
     .range([height, 0]);
 
-  // Map palette names to D3 interpolators
-  const paletteInterpolators = {
-    default: d3.interpolateReds,
-    categorical: d3.interpolateRdYlGn,
-    warm: d3.interpolateOranges,
-    cool: d3.interpolateBlues,
-    vibrant: d3.interpolatePlasma,
-    pastel: d3.interpolatePuRd
-  };
-
-  // Use gradient based on selected palette
+  // Use categorical colors for bars
   const colorScale = d3
-    .scaleSequential()
-    .domain([0, d3.max(data, (d) => d.strokePrevalence)])
-    .interpolator(paletteInterpolators[currentGeoPalette] || d3.interpolateReds);
+    .scaleOrdinal()
+    .domain(data.map((d) => d.state))
+    .range(COLOR_PALETTES[currentGeoPalette]);
 
   // Axes
   svg
@@ -1812,7 +1792,7 @@ function renderSimulatedGeographic() {
     .attr("y", (d) => y(d.strokePrevalence))
     .attr("width", x.bandwidth())
     .attr("height", (d) => height - y(d.strokePrevalence))
-    .attr("fill", (d) => colorScale(d.strokePrevalence))
+    .attr("fill", (d) => colorScale(d.state))
     .attr("opacity", 0.85)
     .on("mouseover", function (event, d) {
       d3.select(this).attr("opacity", 1);
@@ -1899,48 +1879,30 @@ function setupGeographicControls() {
 }
 
 function addColorLegend(svg, colorScale, width, height) {
-  const legendWidth = 300;
-  const legendHeight = 20;
-
   const legend = svg
     .append("g")
     .attr("class", "legend")
-    .attr("transform", `translate(${(width - legendWidth) / 2}, ${height + 40})`);
+    .attr("transform", `translate(20, ${height + 20})`);
 
-  const legendScale = d3
-    .scaleLinear()
-    .domain(colorScale.domain())
-    .range([0, legendWidth]);
-
-  const legendAxis = d3
-    .axisBottom(legendScale)
-    .ticks(5)
-    .tickFormat((d) => d.toFixed(1) + "%");
-
-  // Draw gradient
-  const defs = svg.append("defs");
-  const gradient = defs
-    .append("linearGradient")
-    .attr("id", "legend-gradient");
-
-  gradient
-    .selectAll("stop")
-    .data(d3.range(0, 1.1, 0.1))
-    .enter()
-    .append("stop")
-    .attr("offset", (d) => d * 100 + "%")
-    .attr("stop-color", (d) => colorScale(legendScale.invert(d * legendWidth)));
+  // Title
+  legend
+    .append("text")
+    .attr("class", "legend-title")
+    .attr("x", 0)
+    .attr("y", 0)
+    .style("font-size", "0.9rem")
+    .style("font-weight", "700")
+    .text(
+      `Color Palette: ${currentGeoPalette.charAt(0).toUpperCase() + currentGeoPalette.slice(1)}`,
+    );
 
   legend
-    .append("rect")
-    .attr("width", legendWidth)
-    .attr("height", legendHeight)
-    .style("fill", "url(#legend-gradient)");
-
-  legend
-    .append("g")
-    .attr("transform", `translate(0, ${legendHeight})`)
-    .call(legendAxis);
+    .append("text")
+    .attr("x", 0)
+    .attr("y", 18)
+    .style("font-size", "0.8rem")
+    .style("fill", "#6b7280")
+    .text("Each state has a unique color from the selected palette");
 }
 
 // ===========================
