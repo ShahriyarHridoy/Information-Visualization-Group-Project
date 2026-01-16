@@ -5,497 +5,15 @@ let currentView = "risk-profile";
 let globalData = [];
 let stateGeoData = null;
 
-// Risk Factor Analysis specific state
-let allRecords = [];
-let currentMetric = "stroke_rate_pct";
-let customMode = false;
-let selectedRiskCombinations = [];
-
-// Geographic view specific state
-let currentGeoPalette = "default";
-
-// Color palettes (expanded for 50+ states)
+// Color palettes
 const COLOR_PALETTES = {
-  default: [
-    "#10b981",
-    "#0d9488",
-    "#059669",
-    "#047857",
-    "#065f46",
-    "#ef4444",
-    "#f59e0b",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#06b6d4",
-    "#ea580c",
-    "#7c3aed",
-    "#db2777",
-    "#0891b2",
-    "#c026d3",
-    "#0284c7",
-    "#9333ea",
-    "#be123c",
-    "#4338ca",
-    "#94a3b8",
-    "#475569",
-    "#64748b",
-    "#71717a",
-    "#78716c",
-    "#57534e",
-    "#44403c",
-    "#a3e635",
-    "#84cc16",
-    "#65a30d",
-    "#4d7c0f",
-    "#fbbf24",
-    "#f59e0b",
-    "#d97706",
-    "#b45309",
-    "#92400e",
-    "#fb923c",
-    "#f97316",
-    "#ea580c",
-    "#c2410c",
-    "#9a3412",
-    "#fb7185",
-    "#f43f5e",
-    "#e11d48",
-    "#be123c",
-    "#9f1239",
-    "#c084fc",
-    "#a855f7",
-    "#9333ea",
-    "#7e22ce",
-    "#6b21a8",
-    "#d946ef",
-    "#c026d3",
-    "#a21caf",
-    "#86198f",
-  ],
-  categorical: [
-    "#e41a1c",
-    "#377eb8",
-    "#4daf4a",
-    "#984ea3",
-    "#ff7f00",
-    "#ffff33",
-    "#a65628",
-    "#f781bf",
-    "#66c2a5",
-    "#fc8d62",
-    "#8da0cb",
-    "#e78ac3",
-    "#a6d854",
-    "#ffd92f",
-    "#e5c494",
-    "#b3b3b3",
-    "#8dd3c7",
-    "#fb8072",
-    "#80b1d3",
-    "#fdb462",
-    "#b3de69",
-    "#fccde5",
-    "#d9d9d9",
-    "#bc80bd",
-    "#ccebc5",
-    "#1b9e77",
-    "#d95f02",
-    "#7570b3",
-    "#e7298a",
-    "#66a61e",
-    "#e6ab02",
-    "#a6761d",
-    "#666666",
-    "#8e0152",
-    "#c51b7d",
-    "#de77ae",
-    "#f1b6da",
-    "#fde0ef",
-    "#e6f5d0",
-    "#b8e186",
-    "#7fbc41",
-    "#4d9221",
-    "#276419",
-    "#543005",
-    "#8c510a",
-    "#bf812d",
-    "#dfc27d",
-    "#f6e8c3",
-    "#c7eae5",
-    "#80cdc1",
-    "#35978f",
-    "#01665e",
-    "#003c30",
-    "#b35806",
-    "#e08214",
-  ],
-  warm: [
-    "#8c2d04",
-    "#cc4c02",
-    "#ec7014",
-    "#fe9929",
-    "#fec44f",
-    "#fee391",
-    "#d94801",
-    "#f16913",
-    "#fd8d3c",
-    "#fdae6b",
-    "#fdd0a2",
-    "#feedde",
-    "#a63603",
-    "#e6550d",
-    "#fd8d3c",
-    "#fdae6b",
-    "#fdd0a2",
-    "#fff5eb",
-    "#7f2704",
-    "#b35806",
-    "#e08214",
-    "#fdb863",
-    "#fee0b6",
-    "#f7f7f7",
-    "#d8daeb",
-    "#b2abd2",
-    "#8073ac",
-    "#542788",
-    "#2d004b",
-    "#8c510a",
-    "#bf812d",
-    "#dfc27d",
-    "#f6e8c3",
-    "#f5f5f5",
-    "#c7eae5",
-    "#80cdc1",
-    "#35978f",
-    "#01665e",
-    "#d73027",
-    "#f46d43",
-    "#fdae61",
-    "#fee090",
-    "#ffffbf",
-    "#e0f3f8",
-    "#abd9e9",
-    "#74add1",
-    "#4575b4",
-    "#313695",
-    "#a50026",
-    "#d73027",
-    "#f46d43",
-    "#fdae61",
-    "#fee08b",
-    "#d9ef8b",
-  ],
-  cool: [
-    "#08519c",
-    "#3182bd",
-    "#6baed6",
-    "#9ecae1",
-    "#c6dbef",
-    "#eff3ff",
-    "#08306b",
-    "#2171b5",
-    "#4292c6",
-    "#6baed6",
-    "#9ecae1",
-    "#c6dbef",
-    "#084594",
-    "#2171b5",
-    "#4292c6",
-    "#6baed6",
-    "#9ecae1",
-    "#deebf7",
-    "#08306b",
-    "#2879b5",
-    "#4a9bd6",
-    "#6fb5e1",
-    "#96cdef",
-    "#bfd9f3",
-    "#e0edf7",
-    "#f7fbff",
-    "#08519c",
-    "#3182bd",
-    "#6baed6",
-    "#9ecae1",
-    "#c6dbef",
-    "#eff3ff",
-    "#002c69",
-    "#084594",
-    "#2171b5",
-    "#4292c6",
-    "#6baed6",
-    "#9ecae1",
-    "#c6dbef",
-    "#deebf7",
-    "#08306b",
-    "#08519c",
-    "#2171b5",
-    "#4292c6",
-    "#6baed6",
-    "#9ecae1",
-    "#c6dbef",
-    "#eff3ff",
-    "#001f4d",
-    "#003875",
-    "#00509d",
-    "#0068c5",
-    "#0080ed",
-    "#3399ff",
-    "#66b3ff",
-    "#99ccff",
-  ],
-  vibrant: [
-    "#e91e63",
-    "#9c27b0",
-    "#673ab7",
-    "#3f51b5",
-    "#2196f3",
-    "#03a9f4",
-    "#00bcd4",
-    "#009688",
-    "#4caf50",
-    "#8bc34a",
-    "#cddc39",
-    "#ffeb3b",
-    "#ffc107",
-    "#ff9800",
-    "#ff5722",
-    "#795548",
-    "#9e9e9e",
-    "#607d8b",
-    "#f06292",
-    "#ba68c8",
-    "#9575cd",
-    "#7986cb",
-    "#64b5f6",
-    "#4dd0e1",
-    "#4db6ac",
-    "#81c784",
-    "#aed581",
-    "#dce775",
-    "#fff176",
-    "#ffd54f",
-    "#ffb74d",
-    "#ff8a65",
-    "#a1887f",
-    "#e0e0e0",
-    "#90a4ae",
-    "#ec407a",
-    "#ab47bc",
-    "#7e57c2",
-    "#5c6bc0",
-    "#42a5f5",
-    "#29b6f6",
-    "#26c6da",
-    "#26a69a",
-    "#66bb6a",
-    "#9ccc65",
-    "#d4e157",
-    "#ffee58",
-    "#ffca28",
-    "#ffa726",
-    "#ff7043",
-    "#8d6e63",
-    "#bdbdbd",
-    "#78909c",
-    "#880e4f",
-    "#4a148c",
-  ],
-  pastel: [
-    "#ffcdd2",
-    "#f8bbd0",
-    "#e1bee7",
-    "#d1c4e9",
-    "#c5cae9",
-    "#bbdefb",
-    "#b3e5fc",
-    "#b2ebf2",
-    "#b2dfdb",
-    "#c8e6c9",
-    "#dcedc8",
-    "#f0f4c3",
-    "#fff9c4",
-    "#ffecb3",
-    "#ffe0b2",
-    "#ffccbc",
-    "#d7ccc8",
-    "#f5f5f5",
-    "#cfd8dc",
-    "#fce4ec",
-    "#f3e5f5",
-    "#ede7f6",
-    "#e8eaf6",
-    "#e3f2fd",
-    "#e1f5fe",
-    "#e0f2f1",
-    "#e8f5e9",
-    "#f1f8e9",
-    "#f9fbe7",
-    "#fffde7",
-    "#fff8e1",
-    "#fff3e0",
-    "#fbe9e7",
-    "#efebe9",
-    "#fafafa",
-    "#eceff1",
-    "#ff8a80",
-    "#ff80ab",
-    "#ea80fc",
-    "#b388ff",
-    "#8c9eff",
-    "#82b1ff",
-    "#80d8ff",
-    "#84ffff",
-    "#a7ffeb",
-    "#b9f6ca",
-    "#ccff90",
-    "#f4ff81",
-    "#ffff8d",
-    "#ffe57f",
-    "#ffd180",
-    "#ff9e80",
-    "#bcaaa4",
-    "#eeeeee",
-  ],
+  default: ["#10b981", "#0d9488", "#059669", "#047857", "#065f46"],
+  categorical: ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"],
+  warm: ["#fef3c7", "#fcd34d", "#f59e0b", "#ea580c", "#dc2626"],
+  cool: ["#dbeafe", "#60a5fa", "#3b82f6", "#1d4ed8", "#1e3a8a"],
+  vibrant: ["#ff006e", "#ff8500", "#ffbe0b", "#06ffa5", "#00b4d8"],
+  pastel: ["#ffc9c9", "#b5e7e7", "#d4b5f6", "#ffddb5", "#c9ffc9"],
 };
-
-// Define available color schemes for Risk Factor Analysis
-const colorPalettes = {
-  default: {
-    name: "Default",
-    colors: [
-      "#059669",
-      "#2563eb",
-      "#f97316",
-      "#a855f7",
-      "#b91c1c",
-      "#ec4899",
-      "#06b6d4",
-      "#ea580c",
-      "#7c3aed",
-      "#db2777",
-      "#0891b2",
-      "#c026d3",
-      "#0284c7",
-      "#9333ea",
-      "#be123c",
-      "#4338ca",
-      "#94a3b8",
-    ],
-  },
-  categorical: {
-    name: "Categorical",
-    colors: [
-      "#e41a1c",
-      "#377eb8",
-      "#4daf4a",
-      "#984ea3",
-      "#ff7f00",
-      "#ffff33",
-      "#a65628",
-      "#f781bf",
-      "#66c2a5",
-      "#fc8d62",
-      "#8da0cb",
-      "#e78ac3",
-      "#a6d854",
-      "#ffd92f",
-      "#e5c494",
-      "#b3b3b3",
-      "#8dd3c7",
-    ],
-  },
-  warm: {
-    name: "Warm",
-    colors: [
-      "#8c2d04",
-      "#cc4c02",
-      "#ec7014",
-      "#fe9929",
-      "#fec44f",
-      "#fee391",
-      "#d94801",
-      "#f16913",
-      "#fd8d3c",
-      "#fdae6b",
-      "#fdd0a2",
-      "#feedde",
-      "#a63603",
-      "#e6550d",
-      "#fd8d3c",
-      "#fdae6b",
-      "#fdd0a2",
-    ],
-  },
-  cool: {
-    name: "Cool",
-    colors: [
-      "#08519c",
-      "#3182bd",
-      "#6baed6",
-      "#9ecae1",
-      "#c6dbef",
-      "#eff3ff",
-      "#08306b",
-      "#2171b5",
-      "#4292c6",
-      "#6baed6",
-      "#9ecae1",
-      "#c6dbef",
-      "#084594",
-      "#2171b5",
-      "#4292c6",
-      "#6baed6",
-      "#9ecae1",
-    ],
-  },
-  vibrant: {
-    name: "Vibrant",
-    colors: [
-      "#e91e63",
-      "#9c27b0",
-      "#673ab7",
-      "#3f51b5",
-      "#2196f3",
-      "#03a9f4",
-      "#00bcd4",
-      "#009688",
-      "#4caf50",
-      "#8bc34a",
-      "#cddc39",
-      "#ffeb3b",
-      "#ffc107",
-      "#ff9800",
-      "#ff5722",
-      "#795548",
-      "#9e9e9e",
-    ],
-  },
-  pastel: {
-    name: "Pastel",
-    colors: [
-      "#ffcdd2",
-      "#f8bbd0",
-      "#e1bee7",
-      "#d1c4e9",
-      "#c5cae9",
-      "#bbdefb",
-      "#b3e5fc",
-      "#b2ebf2",
-      "#b2dfdb",
-      "#c8e6c9",
-      "#dcedc8",
-      "#f0f4c3",
-      "#fff9c4",
-      "#ffecb3",
-      "#ffe0b2",
-      "#ffccbc",
-      "#d7ccc8",
-    ],
-  },
-};
-
-let currentPalette = "default";
 
 // ===========================
 // INITIALIZATION
@@ -609,6 +127,7 @@ function switchView(view) {
 async function loadData() {
   try {
     // Load CSV data
+    //const data = await d3.csv('data/BRFSS_small_25000_data.csv', d => ({
     const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
       age_group: d._AGE_G || d.age_group,
       state: d._STATE || d.state,
@@ -626,8 +145,8 @@ async function loadData() {
     }));
 
     globalData = data.filter((d) => d.age_group);
-    allRecords = globalData; // For Risk Factor Analysis
 
+    // Debug: Show state codes in loaded data
     console.log("=== DATA LOADED ===");
     console.log("Total records:", globalData.length);
     const uniqueStates = Array.from(
@@ -635,6 +154,14 @@ async function loadData() {
     ).sort();
     console.log("Unique states in data:", uniqueStates.length);
     console.log("State codes found:", uniqueStates);
+    console.log(
+      "Sample records:",
+      globalData.slice(0, 3).map((d) => ({
+        state: d.state,
+        age: d.age_group,
+        stroke: d.has_stroke,
+      })),
+    );
 
     // Initialize the current view
     initializeRiskProfileView();
@@ -645,264 +172,84 @@ async function loadData() {
 }
 
 // ===========================
-// VIEW 1: RISK PROFILE ANALYSIS
+// VIEW 1: RISK PROFILE ANALYSIS (Original)
 // ===========================
 function initializeRiskProfileView() {
   if (!globalData.length) return;
 
-  // Initialize the Risk Factor Analysis with full functionality
-  renderChart(globalData, customMode, selectedRiskCombinations);
+  // Aggregate data by age and risk factors
+  const aggregated = aggregateRiskData(globalData);
+  renderRiskProfileChart(aggregated);
 
-  // Set up controls with complete interaction handlers
+  // Set up controls
   setupRiskProfileControls();
 }
 
-// Convert BRFSS age codes to readable labels
-function mapAgeGroup(code) {
-  const ageMap = {
-    1: "18-34",
-    2: "35-44",
-    3: "45-54",
-    4: "55-64",
-    5: "65-74",
-    6: "75+",
-  };
-  return ageMap[+code] || null;
-}
+function aggregateRiskData(data) {
+  const ageGroups = Array.from(new Set(data.map((d) => d.age_group))).sort();
 
-// Count risk factors from label text
-function countRiskFactorsInLabel(label) {
-  if (label === "No Risk Factors") return 0;
-  if (label === "Two Risk Factors") return 2;
-  if (label === "3+ Risk Factors") return 3;
+  const profiles = [
+    {
+      key: "no_risk_factors",
+      label: "No Risk Factors",
+      filter: (d) =>
+        !d.is_smoker &&
+        !d.has_diabetes &&
+        !d.has_prediabetes &&
+        !d.is_obese &&
+        !d.has_heart_disease,
+    },
+    { key: "is_smoker", label: "Smoker", filter: (d) => d.is_smoker },
+    { key: "has_diabetes", label: "Diabetes", filter: (d) => d.has_diabetes },
+    { key: "is_obese", label: "Obesity", filter: (d) => d.is_obese },
+    {
+      key: "has_heart_disease",
+      label: "Heart Disease",
+      filter: (d) => d.has_heart_disease,
+    },
+    {
+      key: "2+ risk factors",
+      label: "2+ Risk Factors",
+      filter: (d) =>
+        [d.is_smoker, d.has_diabetes, d.is_obese, d.has_heart_disease].filter(
+          Boolean,
+        ).length >= 2,
+    },
+  ];
 
-  const plusCount = (label.match(/\+/g) || []).length;
-  return plusCount + 1;
-}
+  const result = [];
 
-// Get sorting priority based on risk count
-function getRiskSortPriority(label) {
-  const count = countRiskFactorsInLabel(label);
-  if (count === 0) return 0;
-  if (count === 1) return 1;
-  if (count === 2) return 2;
-  return 3;
-}
-
-// Sort risk profiles in logical order
-function sortRiskProfilesSequentially(riskProfiles) {
-  return riskProfiles.sort((a, b) => {
-    const priorityA = getRiskSortPriority(a);
-    const priorityB = getRiskSortPriority(b);
-    if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.localeCompare(b);
-  });
-}
-
-// Main render function for Risk Factor Analysis
-function renderChart(rawData, isCustomMode, customCombinations) {
-  let aggregatedData;
-
-  if (isCustomMode && customCombinations.length > 0) {
-    aggregatedData = aggregateCustomSelections(rawData, customCombinations);
-  } else {
-    aggregatedData = aggregateDefaultProfiles(rawData);
-  }
-
-  if (!aggregatedData || aggregatedData.length === 0) {
-    console.error("No aggregated data to render");
-    return;
-  }
-
-  updateChart(aggregatedData, currentMetric, true);
-}
-
-// Aggregate default risk profiles
-function aggregateDefaultProfiles(data) {
-  const grouped = d3.group(data, (d) => mapAgeGroup(d.age_group));
-  const results = [];
-
-  grouped.forEach((records, ageLabel) => {
-    if (!ageLabel) return;
-
-    const profiles = [
-      {
-        label: "No Risk Factors",
-        filter: (r) =>
-          !r.is_smoker &&
-          !r.has_diabetes &&
-          !r.has_prediabetes &&
-          !r.is_obese &&
-          !r.has_heart_disease,
-      },
-      {
-        label: "Smoker Only",
-        filter: (r) =>
-          r.is_smoker &&
-          !r.has_diabetes &&
-          !r.has_prediabetes &&
-          !r.is_obese &&
-          !r.has_heart_disease,
-      },
-      {
-        label: "Diabetes Only",
-        filter: (r) =>
-          !r.is_smoker &&
-          r.has_diabetes &&
-          !r.has_prediabetes &&
-          !r.is_obese &&
-          !r.has_heart_disease,
-      },
-      {
-        label: "Prediabetes Only",
-        filter: (r) =>
-          !r.is_smoker &&
-          !r.has_diabetes &&
-          r.has_prediabetes &&
-          !r.is_obese &&
-          !r.has_heart_disease,
-      },
-      {
-        label: "Obesity Only",
-        filter: (r) =>
-          !r.is_smoker &&
-          !r.has_diabetes &&
-          !r.has_prediabetes &&
-          r.is_obese &&
-          !r.has_heart_disease,
-      },
-      {
-        label: "Heart Disease Only",
-        filter: (r) =>
-          !r.is_smoker &&
-          !r.has_diabetes &&
-          !r.has_prediabetes &&
-          !r.is_obese &&
-          r.has_heart_disease,
-      },
-      {
-        label: "Two Risk Factors",
-        filter: (r) =>
-          [
-            r.is_smoker,
-            r.has_diabetes,
-            r.has_prediabetes,
-            r.is_obese,
-            r.has_heart_disease,
-          ].filter(Boolean).length === 2,
-      },
-      {
-        label: "3+ Risk Factors",
-        filter: (r) =>
-          [
-            r.is_smoker,
-            r.has_diabetes,
-            r.has_prediabetes,
-            r.is_obese,
-            r.has_heart_disease,
-          ].filter(Boolean).length >= 3,
-      },
-    ];
-
+  ageGroups.forEach((ageGroup) => {
     profiles.forEach((profile) => {
-      const subset = records.filter(profile.filter);
-      const strokeCount = subset.filter((r) => r.has_stroke).length;
+      const subset = data.filter(
+        (d) => d.age_group === ageGroup && profile.filter(d),
+      );
+      const strokeCases = subset.filter((d) => d.has_stroke).length;
       const total = subset.length;
 
       if (total > 0) {
-        results.push({
-          age_group: ageLabel,
+        result.push({
+          age_group: ageGroup,
           risk_profile: profile.label,
-          stroke_cases: strokeCount,
-          total: total,
-          stroke_rate_pct: (strokeCount / total) * 100,
+          stroke_cases: strokeCases,
+          total_population: total,
+          stroke_rate_pct: (strokeCases / total) * 100,
         });
       }
     });
   });
 
-  return results;
+  return result;
 }
 
-// Aggregate custom risk selections
-function aggregateCustomSelections(data, combinations) {
-  const grouped = d3.group(data, (d) => mapAgeGroup(d.age_group));
-  const results = [];
-
-  const labelMap = {
-    no_risk_factors: "No Risk Factors",
-    is_smoker: "Current Smoker",
-    has_diabetes: "Diabetes",
-    has_prediabetes: "Prediabetes",
-    is_obese: "Obesity (BMI ≥30)",
-    has_heart_disease: "Heart Disease",
-    "is_smoker,has_diabetes": "Smoker + Diabetes",
-    "is_smoker,is_obese": "Smoker + Obesity",
-    "is_smoker,has_heart_disease": "Smoker + Heart Disease",
-    "has_diabetes,is_obese": "Diabetes + Obesity",
-    "has_diabetes,has_heart_disease": "Diabetes + Heart Disease",
-    "is_obese,has_heart_disease": "Obesity + Heart Disease",
-    "is_smoker,has_diabetes,is_obese": "Smoker + Diabetes + Obesity",
-    "is_smoker,has_diabetes,has_heart_disease":
-      "Smoker + Diabetes + Heart Disease",
-    "is_smoker,is_obese,has_heart_disease": "Smoker + Obesity + Heart Disease",
-    "has_diabetes,is_obese,has_heart_disease":
-      "Diabetes + Obesity + Heart Disease",
-    "has_prediabetes,is_obese": "Prediabetes + Obesity",
-    "has_prediabetes,has_heart_disease": "Prediabetes + Heart Disease",
-    "has_prediabetes,is_obese,has_heart_disease":
-      "Prediabetes + Obesity + Heart Disease",
-  };
-
-  grouped.forEach((records, ageLabel) => {
-    if (!ageLabel) return;
-
-    combinations.forEach((combo) => {
-      let subset = records;
-
-      if (combo === "no_risk_factors") {
-        subset = records.filter(
-          (r) =>
-            !r.is_smoker &&
-            !r.has_diabetes &&
-            !r.has_prediabetes &&
-            !r.is_obese &&
-            !r.has_heart_disease,
-        );
-      } else {
-        const factors = combo.split(",");
-        subset = records.filter((r) =>
-          factors.every((factor) => r[factor.trim()]),
-        );
-      }
-
-      const strokeCount = subset.filter((r) => r.has_stroke).length;
-      const total = subset.length;
-
-      if (total > 0) {
-        results.push({
-          age_group: ageLabel,
-          risk_profile: labelMap[combo] || combo,
-          stroke_cases: strokeCount,
-          total: total,
-          stroke_rate_pct: (strokeCount / total) * 100,
-        });
-      }
-    });
-  });
-
-  return results;
-}
-
-// Update chart with new data
-function updateChart(data, metric, animate) {
+function renderRiskProfileChart(data) {
   const container = d3.select("#chart-container");
   container.html("");
 
-  const margin = { top: 60, right: 20, bottom: 70, left: 70 };
+  const margin = { top: 40, right: 120, bottom: 80, left: 80 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
-  const height = 520 - margin.top - margin.bottom;
+  const height = 600 - margin.top - margin.bottom;
 
   const svg = container
     .append("svg")
@@ -911,114 +258,63 @@ function updateChart(data, metric, animate) {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Re-sort profiles for consistency
-  let riskProfiles = Array.from(new Set(data.map((d) => d.risk_profile)));
-  riskProfiles = sortRiskProfilesSequentially(riskProfiles);
-
+  // Get unique age groups and risk profiles
   const ageGroups = Array.from(new Set(data.map((d) => d.age_group)));
+  const riskProfiles = Array.from(new Set(data.map((d) => d.risk_profile)));
 
   // Scales
   const x0 = d3
     .scaleBand()
     .domain(ageGroups)
-    .range([0, width])
-    .paddingInner(0.15)
-    .paddingOuter(0.05);
+    .rangeRound([0, width])
+    .paddingInner(0.1);
 
   const x1 = d3
     .scaleBand()
     .domain(riskProfiles)
-    .range([0, x0.bandwidth()])
-    .padding(0.1);
+    .rangeRound([0, x0.bandwidth()])
+    .padding(0.05);
 
-  const maxVal = d3.max(data, (d) => d[metric]);
   const y = d3
     .scaleLinear()
-    .domain([0, maxVal * 1.1])
+    .domain([0, d3.max(data, (d) => d.stroke_rate_pct)])
+    .nice()
     .range([height, 0]);
 
-  // Update colors
-  const fullColors = colorPalettes[currentPalette].colors;
-  const range = riskProfiles.map((label, i) => {
-    if (label === "No Risk Factors") return fullColors[0];
-    return fullColors[i];
-  });
-  const colorScale = d3.scaleOrdinal().domain(riskProfiles).range(range);
+  const color = d3
+    .scaleOrdinal()
+    .domain(riskProfiles)
+    .range(COLOR_PALETTES.default);
 
   // Axes
-  const yAxis = d3
-    .axisLeft(y)
-    .ticks(7)
-    .tickFormat((d) =>
-      metric === "stroke_rate_pct" ? d.toFixed(1) + "%" : d3.format(",")(d),
-    );
-
-  svg.append("g").attr("class", "axis axis--y").call(yAxis);
-
   svg
     .append("g")
-    .attr("class", "axis axis--x")
+    .attr("class", "axis")
     .attr("transform", `translate(0,${height})`)
     .call(d3.axisBottom(x0))
     .selectAll("text")
-    .style("text-anchor", "middle")
-    .style("font-size", "0.9rem")
-    .style("font-weight", "500");
+    .attr("transform", "rotate(-45)")
+    .style("text-anchor", "end");
+
+  svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
   // Axis labels
   svg
     .append("text")
     .attr("class", "axis-title")
     .attr("transform", "rotate(-90)")
+    .attr("y", -60)
     .attr("x", -height / 2)
-    .attr("y", -margin.left + 15)
-    .attr("text-anchor", "middle")
-    .text(
-      metric === "stroke_rate_pct"
-        ? "Stroke prevalence (%)"
-        : "Stroke cases (count)",
-    );
+    .style("text-anchor", "middle")
+    .text("Stroke Prevalence (%)");
 
   svg
     .append("text")
     .attr("class", "axis-title")
+    .attr("y", height + 70)
     .attr("x", width / 2)
-    .attr("y", height + 50)
-    .attr("text-anchor", "middle")
-    .text("Age group (years)");
-
-  // Legend
-  const legend = svg
-    .append("g")
-    .attr("class", "legend")
-    .attr("transform", "translate(0,-45)");
-
-  const legendItems = legend
-    .selectAll(".legend-item")
-    .data(riskProfiles)
-    .enter()
-    .append("g")
-    .attr("class", "legend-item")
-    .attr(
-      "transform",
-      (d, i) => `translate(${(i % 3) * 300}, ${Math.floor(i / 3) * 22})`,
-    );
-
-  legendItems
-    .append("rect")
-    .attr("width", 16)
-    .attr("height", 16)
-    .attr("fill", (d) => colorScale(d))
-    .attr("stroke", "#1f2937")
-    .attr("stroke-width", 0.5);
-
-  legendItems
-    .append("text")
-    .attr("x", 22)
-    .attr("y", 13)
-    .style("font-size", "0.82rem")
-    .style("font-weight", "500")
-    .text((d) => d);
+    .style("text-anchor", "middle")
+    .text("Age Group");
 
   // Tooltip
   const tooltip = d3
@@ -1033,7 +329,6 @@ function updateChart(data, metric, animate) {
     .data(ageGroups)
     .enter()
     .append("g")
-    .attr("class", "age-group")
     .attr("transform", (d) => `translate(${x0(d)},0)`);
 
   ageGroup
@@ -1043,266 +338,93 @@ function updateChart(data, metric, animate) {
     .append("rect")
     .attr("class", "bar")
     .attr("x", (d) => x1(d.risk_profile))
+    .attr("y", (d) => y(d.stroke_rate_pct))
     .attr("width", x1.bandwidth())
-    .attr("y", (d) => y(d[metric]))
-    .attr("height", (d) => height - y(d[metric]))
-    .attr("fill", (d) => colorScale(d.risk_profile))
-    .attr("opacity", 0.92)
-    .attr("stroke", "#1f2937")
-    .attr("stroke-width", 0.5)
-    .style("cursor", "pointer")
+    .attr("height", (d) => height - y(d.stroke_rate_pct))
+    .attr("fill", (d) => color(d.risk_profile))
     .on("mouseover", function (event, d) {
-      d3.select(this).attr("opacity", 1).attr("stroke-width", 1.5);
-      tooltip.transition().duration(150).style("opacity", 1);
-
-      const valueStr =
-        metric === "stroke_rate_pct"
-          ? d[metric].toFixed(2) + " %"
-          : d3.format(",")(d[metric]) + " cases";
-
+      tooltip.transition().duration(200).style("opacity", 0.9);
       tooltip
         .html(
-          `<strong>Age:</strong> ${d.age_group}<br>` +
-            `<strong>Risk profile:</strong> ${d.risk_profile}<br>` +
-            `<strong>${metric === "stroke_rate_pct" ? "Prevalence" : "Stroke cases"}:</strong> ${valueStr}<br>` +
-            `<strong>Sample size:</strong> ${d3.format(",")(d.total)}`,
+          `
+        <strong>${d.risk_profile}</strong><br/>
+        Age: ${d.age_group}<br/>
+        Prevalence: ${d.stroke_rate_pct.toFixed(2)}%<br/>
+        Cases: ${d.stroke_cases} / ${d.total_population}
+      `,
         )
-        .style("left", event.pageX + 12 + "px")
-        .style("top", event.pageY - 28 + "px");
-    })
-    .on("mousemove", (event) => {
-      tooltip
-        .style("left", event.pageX + 12 + "px")
+        .style("left", event.pageX + 10 + "px")
         .style("top", event.pageY - 28 + "px");
     })
     .on("mouseout", function () {
-      d3.select(this).attr("opacity", 0.92).attr("stroke-width", 0.5);
-      tooltip.transition().duration(200).style("opacity", 0);
+      tooltip.transition().duration(500).style("opacity", 0);
     });
+
+  // Legend
+  const legend = svg
+    .append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${width + 20}, 0)`);
+
+  riskProfiles.forEach((profile, i) => {
+    const legendRow = legend
+      .append("g")
+      .attr("transform", `translate(0, ${i * 25})`);
+
+    legendRow
+      .append("rect")
+      .attr("width", 18)
+      .attr("height", 18)
+      .attr("fill", color(profile));
+
+    legendRow
+      .append("text")
+      .attr("x", 24)
+      .attr("y", 14)
+      .style("font-size", "0.85rem")
+      .text(profile);
+  });
 }
 
-// Setup UI event handlers with complete functionality
 function setupRiskProfileControls() {
-  const MAX_SELECTIONS = 5;
-
   // Metric selector
   const metricSelect = document.getElementById("metric-select");
   if (metricSelect) {
-    metricSelect.addEventListener("change", (e) => {
-      currentMetric = e.target.value;
-      renderChart(allRecords, customMode, selectedRiskCombinations);
+    metricSelect.addEventListener("change", () => {
+      const aggregated = aggregateRiskData(globalData);
+      renderRiskProfileChart(aggregated);
     });
   }
 
-  // Color palette selector
+  // Palette selector
   const paletteSelect = document.getElementById("palette-select");
   if (paletteSelect) {
-    paletteSelect.addEventListener("change", (e) => {
-      currentPalette = e.target.value;
-      renderChart(allRecords, customMode, selectedRiskCombinations);
-      showToast(
-        `Switched to ${colorPalettes[currentPalette].name} palette`,
-        "info",
-      );
+    paletteSelect.addEventListener("change", () => {
+      const aggregated = aggregateRiskData(globalData);
+      renderRiskProfileChart(aggregated);
     });
   }
 
-  // Panel controls
+  // Customize button
   const customizeBtn = document.getElementById("customize-risks-btn");
   const panel = document.getElementById("risk-customization-panel");
   const closeBtn = document.getElementById("close-panel-btn");
 
-  if (customizeBtn && panel) {
+  if (customizeBtn) {
     customizeBtn.addEventListener("click", () => {
-      const isHidden = panel.style.display === "none";
-      panel.style.display = isHidden ? "block" : "none";
-
-      if (isHidden) {
-        console.log("Opening customization panel");
-        setTimeout(() => setupCheckboxListeners(), 50);
-      }
+      panel.style.display = "block";
     });
   }
 
-  if (closeBtn && panel) {
+  if (closeBtn) {
     closeBtn.addEventListener("click", () => {
       panel.style.display = "none";
     });
   }
-
-  // Checkbox event handlers
-  function setupCheckboxListeners() {
-    const checkboxes = document.querySelectorAll(".risk-checkbox");
-    console.log(`Found ${checkboxes.length} checkboxes`);
-
-    if (checkboxes.length === 0) {
-      console.error("No checkboxes detected!");
-      return;
-    }
-
-    checkboxes.forEach((checkbox) => {
-      checkbox.addEventListener("click", function (event) {
-        setTimeout(() => {
-          const checkedBoxes = document.querySelectorAll(
-            ".risk-checkbox:checked",
-          );
-          const checkedCount = checkedBoxes.length;
-
-          if (checkedCount > MAX_SELECTIONS) {
-            event.target.checked = false;
-            showToast(
-              `You can only select up to ${MAX_SELECTIONS} combinations`,
-              "warning",
-            );
-          }
-
-          updateCheckboxStates();
-        }, 10);
-      });
-    });
-  }
-
-  // Update checkbox enabled/disabled state
-  function updateCheckboxStates() {
-    const checkboxes = document.querySelectorAll(".risk-checkbox");
-    const checkedCount = document.querySelectorAll(
-      ".risk-checkbox:checked",
-    ).length;
-
-    if (checkedCount >= MAX_SELECTIONS) {
-      checkboxes.forEach((cb) => {
-        if (!cb.checked) {
-          cb.disabled = true;
-          cb.parentElement.style.opacity = "0.5";
-        }
-      });
-    } else {
-      checkboxes.forEach((cb) => {
-        cb.disabled = false;
-        cb.parentElement.style.opacity = "1";
-      });
-    }
-  }
-
-  setupCheckboxListeners();
-
-  // Apply button
-  const applyBtn = document.getElementById("apply-risks-btn");
-  if (applyBtn) {
-    applyBtn.addEventListener("click", () => {
-      const selectedCheckboxes = document.querySelectorAll(
-        ".risk-checkbox:checked",
-      );
-      selectedRiskCombinations = Array.from(selectedCheckboxes).map(
-        (cb) => cb.value,
-      );
-
-      if (selectedRiskCombinations.length === 0) {
-        showToast("Please select at least one combination", "warning");
-        return;
-      }
-
-      if (selectedRiskCombinations.length > MAX_SELECTIONS) {
-        showToast(`Maximum ${MAX_SELECTIONS} combinations allowed`, "error");
-        return;
-      }
-
-      customMode = true;
-      const viewText = `${selectedRiskCombinations.length} combination(s) selected`;
-      const viewTextElement = document.getElementById("current-view-text");
-      if (viewTextElement) {
-        viewTextElement.textContent = viewText;
-      }
-
-      renderChart(allRecords, true, selectedRiskCombinations);
-      showToast(
-        `Applied ${selectedRiskCombinations.length} combination(s)`,
-        "success",
-      );
-
-      if (panel) panel.style.display = "none";
-    });
-  }
-
-  // Reset button
-  const resetBtn = document.getElementById("reset-risks-btn");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      customMode = false;
-      selectedRiskCombinations = [];
-
-      const checkboxes = document.querySelectorAll(".risk-checkbox");
-      checkboxes.forEach((cb) => {
-        cb.checked = false;
-        cb.disabled = false;
-        cb.parentElement.style.opacity = "1";
-      });
-
-      const viewTextElement = document.getElementById("current-view-text");
-      if (viewTextElement) {
-        viewTextElement.textContent = "Default aggregated risk profiles";
-      }
-
-      renderChart(allRecords, false, []);
-      showToast("View reset to defaults", "info");
-
-      if (panel) panel.style.display = "none";
-    });
-  }
-}
-
-// Toast notification function
-function showToast(message, type = "error") {
-  let toast = document.querySelector(".toast-notification");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "toast-notification";
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 16px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      font-size: 14px;
-      font-weight: 600;
-      opacity: 0;
-      transform: translateY(-20px);
-      transition: all 0.3s ease;
-      z-index: 10000;
-      pointer-events: none;
-    `;
-    document.body.appendChild(toast);
-  }
-
-  const colors = {
-    error: "#ef4444",
-    success: "#10b981",
-    warning: "#f59e0b",
-    info: "#3b82f6",
-  };
-
-  const icons = {
-    error: "⚠️",
-    success: "✓",
-    warning: "⚠️",
-    info: "ℹ️",
-  };
-
-  toast.style.background = colors[type];
-  toast.style.color = "white";
-  toast.innerHTML = `<span style="margin-right: 8px;">${icons[type]}</span>${message}`;
-  toast.style.opacity = "1";
-  toast.style.transform = "translateY(0)";
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    toast.style.transform = "translateY(-20px)";
-  }, 3000);
 }
 
 // ===========================
-// VIEW 2: GEOGRAPHIC DISPARITIES (Updated from friend)
+// VIEW 2: GEOGRAPHIC DISPARITIES
 // ===========================
 async function initializeGeographicView() {
   if (!globalData.length) return;
@@ -1394,11 +516,7 @@ function renderGeographicMap() {
         femalePercent: (femaleCount / total) * 100,
       };
     },
-    (d) => {
-      // Normalize state code: remove decimals, convert to integer string
-      const stateCode = String(Math.floor(parseFloat(d.state) || 0));
-      return stateCode;
-    },
+    (d) => String(Math.floor(parseFloat(d.state) || 0)), // Convert state to integer string
   );
 
   // Get selected indicator
@@ -1411,6 +529,16 @@ function renderGeographicMap() {
   console.log(
     "State codes in data:",
     Array.from(stateData.keys()).sort((a, b) => parseInt(a) - parseInt(b)),
+  );
+  console.log(
+    "First 3 states with full data:",
+    Array.from(stateData.entries())
+      .slice(0, 3)
+      .map(([code, data]) => ({
+        code,
+        total: data.total,
+        stroke: data.strokePrevalence.toFixed(2) + "%",
+      })),
   );
 
   // Determine which metric to use for coloring
@@ -1429,21 +557,14 @@ function renderGeographicMap() {
     }
   };
 
-  // Get all unique state codes and sort them
-  const stateCodes = Array.from(stateData.keys()).sort(
-    (a, b) => parseInt(a) - parseInt(b),
-  );
-
-  console.log("=== GEOGRAPHIC VIEW ===");
-  console.log("Total states in data:", stateCodes.length);
-  console.log("Current palette:", currentGeoPalette);
-  console.log("State codes:", stateCodes.slice(0, 10), "...");
-
-  // Create categorical color scale - each state gets unique color
+  // Color scale
   const colorScale = d3
-    .scaleOrdinal()
-    .domain(stateCodes)
-    .range(COLOR_PALETTES[currentGeoPalette]);
+    .scaleSequential()
+    .domain([
+      0,
+      d3.max(Array.from(stateData.values()), (d) => getMetricValue(d)),
+    ])
+    .interpolator(d3.interpolateReds);
 
   // Projection
   const projection = d3
@@ -1453,7 +574,7 @@ function renderGeographicMap() {
 
   const path = d3.geoPath().projection(projection);
 
-  // State name mapping
+  // State name mapping (partial - add more as needed)
   const stateNames = {
     1: "Alabama",
     2: "Alaska",
@@ -1527,32 +648,32 @@ function renderGeographicMap() {
       .attr("class", "state")
       .attr("d", path)
       .attr("fill", (d) => {
-        // Normalize TopoJSON state ID to match our data format
-        const stateCode = String(Math.floor(parseFloat(d.id) || 0));
+        const stateCode = d.id;
         const data = stateData.get(stateCode);
-
-        // Each state gets unique color from palette
-        return data ? colorScale(stateCode) : "#e5e7eb";
+        return data ? colorScale(getMetricValue(data)) : "#e5e7eb";
       })
-      .attr("opacity", 0.85)
       .on("mouseover", function (event, d) {
-        d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
-
-        // Normalize TopoJSON state ID
-        const stateCode = String(Math.floor(parseFloat(d.id) || 0));
+        const stateCode = String(d.id); // Convert to string
         const data = stateData.get(stateCode);
-        const stateName =
-          stateNames[stateCode] || d.properties?.name || `State ${stateCode}`;
+        const stateName = stateNames[stateCode] || `State ${stateCode}`;
+
+        console.log("Hover - TopoJSON ID:", d.id, "Type:", typeof d.id);
+        console.log("Hover - State Code:", stateCode, "Data found:", !!data);
 
         if (!data) {
+          console.log("⚠️ No data for state code:", stateCode);
+          console.log(
+            "Available state codes in dataset:",
+            Array.from(stateData.keys()).join(", "),
+          );
+          // Show a basic message
           tooltip.transition().duration(200).style("opacity", 0.9);
           tooltip
             .html(
               `
             <div style="min-width: 200px;">
               <strong style="color: #dc2626;">⚠️ ${stateName}</strong><br/>
-              <span style="font-size: 0.85rem;">No data available for this state in the dataset.</span><br/>
-              <span style="font-size: 0.75rem; color: #6b7280;">State Code: ${stateCode}</span>
+              <span style="font-size: 0.85rem;">No data available for this state in the dataset.</span>
             </div>
           `,
             )
@@ -1607,7 +728,6 @@ function renderGeographicMap() {
           .style("top", event.pageY - 150 + "px");
       })
       .on("mouseout", function () {
-        d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
         tooltip.transition().duration(500).style("opacity", 0);
       });
   }
@@ -1721,7 +841,7 @@ function renderSimulatedGeographic() {
         femalePercent: (femaleCount / total) * 100,
       };
     },
-    (d) => String(Math.floor(parseFloat(d.state) || 0)),
+    (d) => String(Math.floor(parseFloat(d.state) || 0)), // Convert state to integer string
   );
 
   const data = Array.from(stateData, ([state, values]) => ({
@@ -1756,11 +876,10 @@ function renderSimulatedGeographic() {
     .nice()
     .range([height, 0]);
 
-  // Use categorical colors for bars
   const colorScale = d3
-    .scaleOrdinal()
-    .domain(data.map((d) => d.state))
-    .range(COLOR_PALETTES[currentGeoPalette]);
+    .scaleSequential()
+    .domain([0, d3.max(data, (d) => d.strokePrevalence)])
+    .interpolator(d3.interpolateReds);
 
   // Axes
   svg
@@ -1792,10 +911,8 @@ function renderSimulatedGeographic() {
     .attr("y", (d) => y(d.strokePrevalence))
     .attr("width", x.bandwidth())
     .attr("height", (d) => height - y(d.strokePrevalence))
-    .attr("fill", (d) => colorScale(d.state))
-    .attr("opacity", 0.85)
+    .attr("fill", (d) => colorScale(d.strokePrevalence))
     .on("mouseover", function (event, d) {
-      d3.select(this).attr("opacity", 1);
       tooltip.transition().duration(200).style("opacity", 0.95);
       tooltip
         .html(
@@ -1840,7 +957,6 @@ function renderSimulatedGeographic() {
         .style("top", event.pageY - 150 + "px");
     })
     .on("mouseout", function () {
-      d3.select(this).attr("opacity", 0.85);
       tooltip.transition().duration(500).style("opacity", 0);
     });
 
@@ -1860,49 +976,61 @@ function setupGeographicControls() {
 
   if (indicatorSelect) {
     indicatorSelect.addEventListener("change", () => {
-      console.log("Indicator changed");
       renderGeographicMap();
     });
   }
 
   if (colorSelect) {
-    colorSelect.addEventListener("change", (e) => {
-      currentGeoPalette = e.target.value;
-      console.log("Color palette changed to:", currentGeoPalette);
+    colorSelect.addEventListener("change", () => {
       renderGeographicMap();
-      showToast(
-        `Switched to ${currentGeoPalette.charAt(0).toUpperCase() + currentGeoPalette.slice(1)} palette`,
-        "info",
-      );
     });
   }
 }
 
 function addColorLegend(svg, colorScale, width, height) {
+  const legendWidth = 300;
+  const legendHeight = 20;
+
   const legend = svg
     .append("g")
     .attr("class", "legend")
-    .attr("transform", `translate(20, ${height + 20})`);
-
-  // Title
-  legend
-    .append("text")
-    .attr("class", "legend-title")
-    .attr("x", 0)
-    .attr("y", 0)
-    .style("font-size", "0.9rem")
-    .style("font-weight", "700")
-    .text(
-      `Color Palette: ${currentGeoPalette.charAt(0).toUpperCase() + currentGeoPalette.slice(1)}`,
+    .attr(
+      "transform",
+      `translate(${(width - legendWidth) / 2}, ${height + 40})`,
     );
 
+  const legendScale = d3
+    .scaleLinear()
+    .domain(colorScale.domain())
+    .range([0, legendWidth]);
+
+  const legendAxis = d3
+    .axisBottom(legendScale)
+    .ticks(5)
+    .tickFormat((d) => d.toFixed(1) + "%");
+
+  // Draw gradient
+  const defs = svg.append("defs");
+  const gradient = defs.append("linearGradient").attr("id", "legend-gradient");
+
+  gradient
+    .selectAll("stop")
+    .data(d3.range(0, 1.1, 0.1))
+    .enter()
+    .append("stop")
+    .attr("offset", (d) => d * 100 + "%")
+    .attr("stop-color", (d) => colorScale(legendScale.invert(d * legendWidth)));
+
   legend
-    .append("text")
-    .attr("x", 0)
-    .attr("y", 18)
-    .style("font-size", "0.8rem")
-    .style("fill", "#6b7280")
-    .text("Each state has a unique color from the selected palette");
+    .append("rect")
+    .attr("width", legendWidth)
+    .attr("height", legendHeight)
+    .style("fill", "url(#legend-gradient)");
+
+  legend
+    .append("g")
+    .attr("transform", `translate(0, ${legendHeight})`)
+    .call(legendAxis);
 }
 
 // ===========================
@@ -2263,5 +1391,3 @@ window.addEventListener("resize", () => {
     }
   }, 250);
 });
-
-console.log("Script initialization complete");

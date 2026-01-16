@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -19,7 +19,7 @@
         <h2>📊 BRFSS Explorer</h2>
         <button class="toggle-btn" id="toggle-btn">☰</button>
       </div>
-      
+
       <div class="sidenav-content">
         <div class="nav-section">
           <h3>Visualizations</h3>
@@ -103,11 +103,15 @@
               <div>
                 <h3>🔍 Explore Specific Risk Factor Combinations</h3>
                 <p class="panel-subtitle">
-                  Select specific combinations to analyze their stroke prevalence
-                  across age groups
+                  Select specific combinations to analyze their stroke
+                  prevalence across age groups
                 </p>
               </div>
-              <button id="close-panel-btn" class="close-btn" title="Close panel">
+              <button
+                id="close-panel-btn"
+                class="close-btn"
+                title="Close panel"
+              >
                 ✕
               </button>
             </div>
@@ -150,7 +154,11 @@
                     <span>Prediabetes</span>
                   </label>
                   <label class="checkbox-label">
-                    <input type="checkbox" value="is_obese" class="risk-checkbox" />
+                    <input
+                      type="checkbox"
+                      value="is_obese"
+                      class="risk-checkbox"
+                    />
                     <span>Obesity (BMI ≥30)</span>
                   </label>
                   <label class="checkbox-label">
@@ -295,7 +303,9 @@
               <!-- Current View Info -->
               <div class="selection-info">
                 <strong>📊 Current View:</strong>
-                <span id="current-view-text">Default aggregated risk profiles</span>
+                <span id="current-view-text"
+                  >Default aggregated risk profiles</span
+                >
               </div>
             </div>
           </section>
@@ -312,7 +322,8 @@
               <p>
                 CDC Behavioral Risk Factor Surveillance System (BRFSS), 2024
                 public-use data file <br /><br />
-                <strong>Note:</strong> 100,000 records used in this visualization
+                <strong>Note:</strong> 100,000 records used in this
+                visualization
               </p>
             </div>
 
@@ -327,10 +338,12 @@
             <div class="note-card">
               <h4>🎮 Interactions</h4>
               <ul>
-                <li><strong>Hover</strong> over bars to see detailed statistics</li>
                 <li>
-                  <strong>Switch metrics</strong> between prevalence (%) and case
-                  counts
+                  <strong>Hover</strong> over bars to see detailed statistics
+                </li>
+                <li>
+                  <strong>Switch metrics</strong> between prevalence (%) and
+                  case counts
                 </li>
                 <li>
                   <strong>Customize</strong> to explore specific risk factor
@@ -356,15 +369,17 @@
                 </select>
               </label>
             </div>
-            
+
             <div class="control-group">
               <label>
                 🎨 Color Scheme:
                 <select id="geo-color-select">
-                  <option value="reds">Red Scale</option>
-                  <option value="blues">Blue Scale</option>
-                  <option value="greens">Green Scale</option>
-                  <option value="purples">Purple Scale</option>
+                  <option value="default" selected>Default</option>
+                  <option value="categorical">Categorical</option>
+                  <option value="warm">Warm</option>
+                  <option value="cool">Cool</option>
+                  <option value="vibrant">Vibrant</option>
+                  <option value="pastel">Pastel</option>
                 </select>
               </label>
             </div>
@@ -378,15 +393,15 @@
             <div class="note-card">
               <h4>🗺️ Geographic Analysis</h4>
               <p>
-                This choropleth map shows health indicator prevalence across U.S. states.
-                Darker colors indicate higher prevalence rates.
+                This choropleth map shows health indicator prevalence across
+                U.S. states. Darker colors indicate higher prevalence rates.
               </p>
             </div>
             <div class="note-card">
               <h4>💡 Usage</h4>
               <p>
-                Hover over states to see exact values. Select different indicators
-                to compare geographic patterns across health metrics.
+                Hover over states to see exact values. Select different
+                indicators to compare geographic patterns across health metrics.
               </p>
             </div>
           </section>
@@ -406,7 +421,7 @@
                 </select>
               </label>
             </div>
-            
+
             <div class="control-group">
               <label>
                 Health Outcome:
@@ -445,11 +460,13 @@
                   <option value="smoking">Smoking</option>
                   <option value="obesity">Obesity</option>
                   <option value="diabetes">Diabetes</option>
-                  <option value="physical_inactivity">Physical Inactivity</option>
+                  <option value="physical_inactivity">
+                    Physical Inactivity
+                  </option>
                 </select>
               </label>
             </div>
-            
+
             <div class="control-group">
               <label>
                 Secondary Risk Factor:
@@ -471,8 +488,9 @@
             <div class="note-card">
               <h4>🔗 Risk Factor Clustering</h4>
               <p>
-                Explore how different health conditions and risk behaviors co-occur
-                to identify patterns of multimorbidity and high-risk populations.
+                Explore how different health conditions and risk behaviors
+                co-occur to identify patterns of multimorbidity and high-risk
+                populations.
               </p>
             </div>
           </section>
