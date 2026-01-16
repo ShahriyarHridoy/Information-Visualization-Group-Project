@@ -23,13 +23,13 @@
       <div class="sidenav-content">
         <div class="nav-section">
           <h3>Visualizations</h3>
-          <button class="nav-btn" data-view="geographic">
+          <button class="nav-btn active" data-view="geographic">
             🗺️ Geographic Disparities
           </button>
-          <button class="nav-btn active" data-view="risk-profile">
+          <button class="nav-btn" data-view="risk-profile">
             🎯 Risk Factor Analysis
           </button>
-          
+
           <button class="nav-btn" data-view="demographic">
             👥 Demographic Comparison
           </button>
@@ -403,7 +403,11 @@
                   Select two states to compare their health metrics side-by-side
                 </p>
               </div>
-              <button id="close-comparison-btn" class="close-btn" title="Close panel">
+              <button
+                id="close-comparison-btn"
+                class="close-btn"
+                title="Close panel"
+              >
                 ✕
               </button>
             </div>
@@ -411,20 +415,60 @@
             <div class="panel-content">
               <div class="risk-group">
                 <h4>🗺️ Select States to Compare</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                  "
+                >
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #0d9488;">
+                    <label
+                      style="
+                        display: block;
+                        margin-bottom: 8px;
+                        font-weight: 600;
+                        color: #0d9488;
+                      "
+                    >
                       First State:
                     </label>
-                    <select id="compare-state-1" class="state-select" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.95rem;">
+                    <select
+                      id="compare-state-1"
+                      class="state-select"
+                      style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 2px solid #e5e7eb;
+                        border-radius: 6px;
+                        font-size: 0.95rem;
+                      "
+                    >
                       <option value="">-- Select State --</option>
                     </select>
                   </div>
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #0d9488;">
+                    <label
+                      style="
+                        display: block;
+                        margin-bottom: 8px;
+                        font-weight: 600;
+                        color: #0d9488;
+                      "
+                    >
                       Second State:
                     </label>
-                    <select id="compare-state-2" class="state-select" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.95rem;">
+                    <select
+                      id="compare-state-2"
+                      class="state-select"
+                      style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 2px solid #e5e7eb;
+                        border-radius: 6px;
+                        font-size: 0.95rem;
+                      "
+                    >
                       <option value="">-- Select State --</option>
                     </select>
                   </div>
@@ -438,7 +482,7 @@
               </div>
 
               <!-- Comparison Results -->
-              <div id="comparison-results" style="display: none;">
+              <div id="comparison-results" style="display: none">
                 <!-- Will be populated dynamically -->
               </div>
             </div>
@@ -511,8 +555,6 @@
 
         <!-- View 4: Risk Clustering -->
         <div class="view-container" id="view-correlation">
-     
-
           <section id="correlation-container" class="chart-container">
             <!-- Correlation visualization will be rendered here -->
           </section>
@@ -532,7 +574,8 @@
 
       <footer>
         <p class="footer-note">
-          Data Visualization Group Assignment | S M Shahriyar, Md hasan Habib, Md. Ahsanul Karim Likhan | TU Wien
+          Data Visualization Group Assignment | S M Shahriyar, Md hasan Habib,
+          Md. Ahsanul Karim Likhan | TU Wien
         </p>
       </footer>
     </div>
