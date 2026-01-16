@@ -13,8 +13,6 @@ let selectedRiskCombinations = [];
 
 // Geographic view specific state
 let currentGeoPalette = "default";
-let comparisonMode = false;
-let selectedStatesForComparison = [];
 
 // Color palettes (expanded for 50+ states)
 const COLOR_PALETTES = {
@@ -610,208 +608,39 @@ function switchView(view) {
 // ===========================
 async function loadData() {
   try {
-    // Load CSV data with proper BRFSS code mapping
-    const data = await d3.csv(
-      //"BRFSS_2024_full.csv"
-      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
-      (d) => {
-        // Helper function to safely parse numeric values
-        const parseNum = (val) => {
-          const num = +val;
-          return isNaN(num) ? null : num;
-        };
+    // Load CSV data
+    const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
+      age_group: d._AGE_G || d.age_group,
+      state: d._STATE || d.state,
+      sex: d.SEX || d.sex,
+      income: d.INCOME3 || d.income,
+      education: d._EDUCAG || d.education,
+      race: d._RACE || d.race,
+      has_stroke: +d.CVDSTRK3 === 1,
+      is_smoker: +d._RFSMOK3 === 1,
+      has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
+      has_prediabetes: +d.PREDIAB2 === 1,
+      is_obese: +d._RFBMI5 === 1,
+      has_heart_disease: +d.CVDCRHD4 === 1,
+      bmi: +d._BMI5 || null,
+    }));
 
-        // Age Group (_AGE_G): 1=18-24, 2=25-34, 3=35-44, 4=45-54, 5=55-64, 6=65+
-        const ageCode = parseNum(d._AGE_G || d.age_group);
-        const ageMap = {
-          1: "18-24",
-          2: "25-34",
-          3: "35-44",
-          4: "45-54",
-          5: "55-64",
-          6: "65+",
-        };
-
-        // Income (INCOME3): 1=<$15k, 2=$15k-<$25k, 3=$25k-<$35k, 4=$35k-<$50k,
-        //                   5=$50k-<$100k, 6=$100k-<$200k, 7=$200k+, 77=Don't know, 99=Refused
-        const incomeCode = parseNum(d.INCOME3 || d.income);
-        const incomeMap = {
-          1: "Less than $15,000",
-          2: "$15,000 to $24,999",
-          3: "$25,000 to $34,999",
-          4: "$35,000 to $49,999",
-          5: "$50,000 to $99,999",
-          6: "$100,000 to $199,999",
-          7: "$200,000 or more",
-          77: null, // Don't know
-          99: null, // Refused
-        };
-
-        // Education (_EDUCAG): 1=Did not graduate HS, 2=Graduated HS, 3=Attended college, 4=Graduated college, 9=Don't know/Missing
-        const educCode = parseNum(d._EDUCAG || d.education);
-        const educMap = {
-          1: "Did not graduate high school",
-          2: "Graduated high school",
-          3: "Attended college or technical school",
-          4: "Graduated from college or technical school",
-          9: null, // Don't know/Missing
-        };
-
-        // Race (_RACE): 1=White, 2=Black, 3=Native American/Alaskan, 4=Asian, 5=Native Hawaiian/Pacific Islander
-        //               6=Other, 7=Multiracial, 8=Hispanic, 9=Don't know/Refused
-        const raceCode = parseNum(d._RACE || d.race);
-        const raceMap = {
-          1: "White only, non-Hispanic",
-          2: "Black only, non-Hispanic",
-          3: "American Indian or Alaskan Native only, non-Hispanic",
-          4: "Asian only, non-Hispanic",
-          5: "Native Hawaiian or other Pacific Islander only, non-Hispanic",
-          6: "Other race only, non-Hispanic",
-          7: "Multiracial, non-Hispanic",
-          8: "Hispanic",
-          9: null, // Don't know/Refused
-        };
-
-        // Health outcomes
-        // CVDSTRK3: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const strokeCode = parseNum(d.CVDSTRK3);
-
-        // _RFSMOK3: 1=Current smoker (smokes every day or some days), 2=Not current smoker, 9=Don't know/Missing
-        const smokerCode = parseNum(d._RFSMOK3);
-
-        // DIABETE4: 1=Yes, 2=Yes but female told only during pregnancy, 3=No, 4=No, pre-diabetes or borderline, 7=Don't know, 9=Refused
-        const diabetesCode = parseNum(d.DIABETE4);
-
-        // PREDIAB2: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const prediabCode = parseNum(d.PREDIAB2);
-
-        // _RFBMI5: 1=No (not overweight or obese), 2=Yes (overweight or obese), 9=Don't know/Missing
-        const obeseCode = parseNum(d._RFBMI5);
-
-        // CVDCRHD4: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const heartCode = parseNum(d.CVDCRHD4);
-
-        return {
-          // Demographics with readable labels
-          age_group: ageMap[ageCode] || null,
-          age_group_code: ageCode,
-          state: d._STATE || d.state,
-          sex: d.SEX || d.sex,
-          income: incomeMap[incomeCode] || null,
-          income_code: incomeCode,
-          education: educMap[educCode] || null,
-          education_code: educCode,
-          race: raceMap[raceCode] || null,
-          race_code: raceCode,
-
-          // Health outcomes (1 = Yes, everything else = No)
-          has_stroke: strokeCode === 1,
-          is_smoker: smokerCode === 1,
-          has_diabetes: diabetesCode === 1 || diabetesCode === 2, // Include gestational diabetes
-          has_prediabetes: prediabCode === 1 || diabetesCode === 4, // Explicit prediabetes or borderline
-          is_obese: obeseCode === 2, // Note: BRFSS uses 2=Yes for obesity
-          has_heart_disease: heartCode === 1,
-          bmi: parseNum(d._BMI5) || null,
-
-          // Keep raw codes for debugging
-          _raw_age: d._AGE_G,
-          _raw_income: d.INCOME3,
-          _raw_education: d._EDUCAG,
-          _raw_race: d._RACE,
-        };
-      },
-    );
-
-    // IMPORTANT: Only filter out records that are completely invalid
-    // Keep records with valid age_group for risk analysis, even if other demographics are missing
-    globalData = data.filter((d) => d.age_group !== null);
+    globalData = data.filter((d) => d.age_group);
     allRecords = globalData; // For Risk Factor Analysis
 
     console.log("=== DATA LOADED ===");
     console.log("Total records:", globalData.length);
-
-    if (globalData.length === 0) {
-      console.error("ERROR: No data loaded! Check CSV file and column names.");
-      showError("No data could be loaded. Please verify your CSV file format.");
-      return;
-    }
-
-    // Debug: Check demographic data quality
-    console.log("\n=== DEMOGRAPHIC DATA QUALITY ===");
-    const withAge = globalData.filter((d) => d.age_group).length;
-    const withIncome = globalData.filter((d) => d.income).length;
-    const withEducation = globalData.filter((d) => d.education).length;
-    const withRace = globalData.filter((d) => d.race).length;
-
-    console.log(
-      `Records with age: ${withAge} (${((withAge / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with income: ${withIncome} (${((withIncome / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with education: ${withEducation} (${((withEducation / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with race: ${withRace} (${((withRace / globalData.length) * 100).toFixed(1)}%)`,
-    );
-
-    // Sample demographic distribution
-    console.log("\n=== SAMPLE AGE DISTRIBUTION ===");
-    const ageDist = d3.rollup(
-      globalData,
-      (v) => v.length,
-      (d) => d.age_group,
-    );
-    Array.from(ageDist.entries())
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([age, count]) => {
-        console.log(
-          `${age}: ${count} (${((count / globalData.length) * 100).toFixed(1)}%)`,
-        );
-      });
-
-    console.log("\n=== SAMPLE HEALTH OUTCOMES ===");
-    const strokeCount = globalData.filter((d) => d.has_stroke).length;
-    const diabetesCount = globalData.filter((d) => d.has_diabetes).length;
-    const obeseCount = globalData.filter((d) => d.is_obese).length;
-    const smokerCount = globalData.filter((d) => d.is_smoker).length;
-
-    console.log(
-      `Stroke: ${strokeCount} (${((strokeCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Diabetes: ${diabetesCount} (${((diabetesCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Obesity: ${obeseCount} (${((obeseCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Smoking: ${smokerCount} (${((smokerCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-
     const uniqueStates = Array.from(
       new Set(globalData.map((d) => d.state)),
     ).sort();
-    console.log("\n=== STATE DATA ===");
     console.log("Unique states in data:", uniqueStates.length);
-    console.log(
-      "State codes found:",
-      uniqueStates.slice(0, 10).join(", "),
-      "...",
-    );
+    console.log("State codes found:", uniqueStates);
 
     // Initialize the current view
-    console.log("\n=== INITIALIZING VIEWS ===");
     initializeRiskProfileView();
-    console.log("Risk Profile View initialized");
   } catch (error) {
     console.error("Error loading data:", error);
-    console.error("Error details:", error.message);
-    console.error("Stack trace:", error.stack);
-    showError(
-      "Failed to load data. Please check the CSV file and browser console for details.",
-    );
+    showError("Failed to load data. Please check the CSV file.");
   }
 }
 
@@ -829,22 +658,16 @@ function initializeRiskProfileView() {
 }
 
 // Convert BRFSS age codes to readable labels
-function mapAgeGroup(ageValue) {
-  // If already a readable label, return as-is
-  if (typeof ageValue === "string" && ageValue.includes("-")) {
-    return ageValue;
-  }
-
-  // Otherwise map from code
+function mapAgeGroup(code) {
   const ageMap = {
-    1: "18-24",
-    2: "25-34",
-    3: "35-44",
-    4: "45-54",
-    5: "55-64",
-    6: "65+",
+    1: "18-34",
+    2: "35-44",
+    3: "45-54",
+    4: "55-64",
+    5: "65-74",
+    6: "75+",
   };
-  return ageMap[+ageValue] || null;
+  return ageMap[+code] || null;
 }
 
 // Count risk factors from label text
@@ -930,7 +753,33 @@ function aggregateDefaultProfiles(data) {
           !r.is_obese &&
           !r.has_heart_disease,
       },
-
+      {
+        label: "Prediabetes Only",
+        filter: (r) =>
+          !r.is_smoker &&
+          !r.has_diabetes &&
+          r.has_prediabetes &&
+          !r.is_obese &&
+          !r.has_heart_disease,
+      },
+      {
+        label: "Obesity Only",
+        filter: (r) =>
+          !r.is_smoker &&
+          !r.has_diabetes &&
+          !r.has_prediabetes &&
+          r.is_obese &&
+          !r.has_heart_disease,
+      },
+      {
+        label: "Heart Disease Only",
+        filter: (r) =>
+          !r.is_smoker &&
+          !r.has_diabetes &&
+          !r.has_prediabetes &&
+          !r.is_obese &&
+          r.has_heart_disease,
+      },
       {
         label: "Two Risk Factors",
         filter: (r) =>
@@ -1050,7 +899,7 @@ function updateChart(data, metric, animate) {
   const container = d3.select("#chart-container");
   container.html("");
 
-  const margin = { top: 60, right: 20, bottom: 100, left: 70 };
+  const margin = { top: 60, right: 20, bottom: 70, left: 70 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const height = 520 - margin.top - margin.bottom;
@@ -1134,7 +983,7 @@ function updateChart(data, metric, animate) {
     .append("text")
     .attr("class", "axis-title")
     .attr("x", width / 2)
-    .attr("y", height + 65)
+    .attr("y", height + 50)
     .attr("text-anchor", "middle")
     .text("Age group (years)");
 
@@ -1597,19 +1446,14 @@ function renderGeographicMap() {
     warm: d3.interpolateOranges,
     cool: d3.interpolateBlues,
     vibrant: d3.interpolatePlasma,
-    pastel: d3.interpolatePuRd,
+    pastel: d3.interpolatePuRd
   };
 
   // Create gradient color scale based on health indicator values
   const colorScale = d3
     .scaleSequential()
-    .domain([
-      0,
-      d3.max(Array.from(stateData.values()), (d) => getMetricValue(d)),
-    ])
-    .interpolator(
-      paletteInterpolators[currentGeoPalette] || d3.interpolateReds,
-    );
+    .domain([0, d3.max(Array.from(stateData.values()), (d) => getMetricValue(d))])
+    .interpolator(paletteInterpolators[currentGeoPalette] || d3.interpolateReds);
 
   // Projection
   const projection = d3
@@ -1701,23 +1545,8 @@ function renderGeographicMap() {
         return data ? colorScale(getMetricValue(data)) : "#e5e7eb";
       })
       .attr("opacity", 0.85)
-      .attr("stroke", "#ffffff")
-      .attr("stroke-width", 1)
-      .style("cursor", "pointer")
-      .on("click", function (event, d) {
-        const stateCode = String(Math.floor(parseFloat(d.id) || 0));
-        const data = stateData.get(stateCode);
-
-        if (!data) return; // Can't select states with no data
-
-        // Handle state selection for comparison
-        handleStateClick(stateCode, d3.select(this), stateNames);
-      })
       .on("mouseover", function (event, d) {
-        // Highlight on hover
-        if (!d3.select(this).classed("selected-for-comparison")) {
-          d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
-        }
+        d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
 
         // Normalize TopoJSON state ID
         const stateCode = String(Math.floor(parseFloat(d.id) || 0));
@@ -1743,15 +1572,6 @@ function renderGeographicMap() {
         }
 
         if (data) {
-          // Enhanced tooltip with click instruction when in comparison mode
-          const comparisonHint = comparisonMode
-            ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #10b981; text-align: center;">
-                <span style="color: #10b981; font-weight: 700; font-size: 0.9rem;">
-                  👆 Click to select for comparison
-                </span>
-              </div>`
-            : "";
-
           tooltip.transition().duration(200).style("opacity", 0.95);
           tooltip
             .html(
@@ -1784,7 +1604,6 @@ function renderGeographicMap() {
                 <span style="font-size: 0.85rem;">⚖️ Obesity: <strong>${data.obesityRate.toFixed(2)}%</strong></span><br/>
                 <span style="font-size: 0.85rem;">🔄 Multiple Risks (2+): <strong>${data.multipleRisksRate.toFixed(2)}%</strong></span>
               </div>
-              ${comparisonHint}
             </div>
           `,
             )
@@ -1798,10 +1617,7 @@ function renderGeographicMap() {
           .style("top", event.pageY - 150 + "px");
       })
       .on("mouseout", function () {
-        // Don't reset opacity if state is selected
-        if (!d3.select(this).classed("selected-for-comparison")) {
-          d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
-        }
+        d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
         tooltip.transition().duration(500).style("opacity", 0);
       });
   }
@@ -1957,16 +1773,14 @@ function renderSimulatedGeographic() {
     warm: d3.interpolateOranges,
     cool: d3.interpolateBlues,
     vibrant: d3.interpolatePlasma,
-    pastel: d3.interpolatePuRd,
+    pastel: d3.interpolatePuRd
   };
 
   // Use gradient based on selected palette
   const colorScale = d3
     .scaleSequential()
     .domain([0, d3.max(data, (d) => d.strokePrevalence)])
-    .interpolator(
-      paletteInterpolators[currentGeoPalette] || d3.interpolateReds,
-    );
+    .interpolator(paletteInterpolators[currentGeoPalette] || d3.interpolateReds);
 
   // Axes
   svg
@@ -2082,613 +1896,6 @@ function setupGeographicControls() {
       );
     });
   }
-
-  // State comparison controls
-  setupStateComparison();
-}
-
-function handleStateClick(stateCode, pathElement, stateNames) {
-  if (!comparisonMode) {
-    // Not in comparison mode, just show info
-    return;
-  }
-
-  const stateName = stateNames[stateCode] || `State ${stateCode}`;
-
-  // Check if state is already selected
-  const alreadySelected = selectedStatesForComparison.find(
-    (s) => s.code === stateCode,
-  );
-
-  if (alreadySelected) {
-    // Deselect state
-    selectedStatesForComparison = selectedStatesForComparison.filter(
-      (s) => s.code !== stateCode,
-    );
-    pathElement
-      .classed("selected-for-comparison", false)
-      .attr("stroke", "#ffffff")
-      .attr("stroke-width", 1)
-      .attr("opacity", 0.85);
-
-    // Update dropdown
-    if (selectedStatesForComparison.length === 0) {
-      document.getElementById("compare-state-1").value = "";
-      document.getElementById("compare-state-2").value = "";
-    } else if (selectedStatesForComparison.length === 1) {
-      document.getElementById("compare-state-1").value =
-        selectedStatesForComparison[0].code;
-      document.getElementById("compare-state-2").value = "";
-    }
-
-    showToast(`${stateName} deselected`, "info");
-    return;
-  }
-
-  // Can't select more than 2 states
-  if (selectedStatesForComparison.length >= 2) {
-    showToast(
-      "Maximum 2 states can be selected. Deselect a state first.",
-      "warning",
-    );
-    return;
-  }
-
-  // Select state
-  selectedStatesForComparison.push({ code: stateCode, name: stateName });
-
-  // Visual feedback
-  pathElement
-    .classed("selected-for-comparison", true)
-    .attr("stroke", "#10b981")
-    .attr("stroke-width", 3)
-    .attr("opacity", 1);
-
-  // Update dropdowns
-  const state1Select = document.getElementById("compare-state-1");
-  const state2Select = document.getElementById("compare-state-2");
-
-  if (selectedStatesForComparison.length === 1) {
-    state1Select.value = selectedStatesForComparison[0].code;
-  } else if (selectedStatesForComparison.length === 2) {
-    state1Select.value = selectedStatesForComparison[0].code;
-    state2Select.value = selectedStatesForComparison[1].code;
-  }
-
-  showToast(
-    `${stateName} selected (${selectedStatesForComparison.length}/2)`,
-    "success",
-  );
-
-  // Auto-generate comparison if 2 states selected
-  if (selectedStatesForComparison.length === 2) {
-    setTimeout(() => {
-      renderStateComparison(
-        selectedStatesForComparison[0].code,
-        selectedStatesForComparison[1].code,
-        stateNames,
-      );
-    }, 500);
-  }
-}
-
-function setupStateComparison() {
-  const compareBtn = document.getElementById("compare-states-btn");
-  const comparisonPanel = document.getElementById("state-comparison-panel");
-  const closeBtn = document.getElementById("close-comparison-btn");
-  const applyBtn = document.getElementById("apply-comparison-btn");
-  const state1Select = document.getElementById("compare-state-1");
-  const state2Select = document.getElementById("compare-state-2");
-
-  // State name mapping
-  const stateNames = {
-    1: "Alabama",
-    2: "Alaska",
-    4: "Arizona",
-    5: "Arkansas",
-    6: "California",
-    8: "Colorado",
-    9: "Connecticut",
-    10: "Delaware",
-    11: "DC",
-    12: "Florida",
-    13: "Georgia",
-    15: "Hawaii",
-    16: "Idaho",
-    17: "Illinois",
-    18: "Indiana",
-    19: "Iowa",
-    20: "Kansas",
-    21: "Kentucky",
-    22: "Louisiana",
-    23: "Maine",
-    24: "Maryland",
-    25: "Massachusetts",
-    26: "Michigan",
-    27: "Minnesota",
-    28: "Mississippi",
-    29: "Missouri",
-    30: "Montana",
-    31: "Nebraska",
-    32: "Nevada",
-    33: "New Hampshire",
-    34: "New Jersey",
-    35: "New Mexico",
-    36: "New York",
-    37: "North Carolina",
-    38: "North Dakota",
-    39: "Ohio",
-    40: "Oklahoma",
-    41: "Oregon",
-    42: "Pennsylvania",
-    44: "Rhode Island",
-    45: "South Carolina",
-    46: "South Dakota",
-    47: "Tennessee",
-    48: "Texas",
-    49: "Utah",
-    50: "Vermont",
-    51: "Virginia",
-    53: "Washington",
-    54: "West Virginia",
-    55: "Wisconsin",
-    56: "Wyoming",
-  };
-
-  // Populate state dropdowns
-  if (state1Select && state2Select) {
-    // Get available states from data
-    const stateData = d3.rollup(
-      globalData,
-      (v) => v.length,
-      (d) => String(Math.floor(parseFloat(d.state) || 0)),
-    );
-
-    const availableStates = Array.from(stateData.keys())
-      .filter((code) => stateNames[code])
-      .sort((a, b) => stateNames[a].localeCompare(stateNames[b]));
-
-    availableStates.forEach((code) => {
-      const option1 = document.createElement("option");
-      option1.value = code;
-      option1.textContent = stateNames[code];
-      state1Select.appendChild(option1);
-
-      const option2 = document.createElement("option");
-      option2.value = code;
-      option2.textContent = stateNames[code];
-      state2Select.appendChild(option2);
-    });
-  }
-
-  // Show/hide comparison panel
-  if (compareBtn) {
-    compareBtn.addEventListener("click", () => {
-      comparisonPanel.style.display = "block";
-      document.getElementById("comparison-results").style.display = "none";
-
-      // Enable comparison mode
-      comparisonMode = true;
-      selectedStatesForComparison = [];
-
-      // Clear visual selections on map
-      d3.selectAll(".state")
-        .classed("selected-for-comparison", false)
-        .attr("stroke", "#ffffff")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.85);
-
-      // Update button text to indicate active mode
-      compareBtn.textContent = "🔍 Comparison Mode: ON";
-      compareBtn.style.background =
-        "linear-gradient(135deg, #10b981 0%, #059669 100%)";
-
-      showToast(
-        "Click on states in the map to select them for comparison",
-        "info",
-      );
-    });
-  }
-
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      comparisonPanel.style.display = "none";
-
-      // Disable comparison mode
-      comparisonMode = false;
-      selectedStatesForComparison = [];
-
-      // Clear visual selections on map
-      d3.selectAll(".state")
-        .classed("selected-for-comparison", false)
-        .attr("stroke", "#ffffff")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.85);
-
-      // Reset button text
-      if (compareBtn) {
-        compareBtn.textContent = "🔍 Compare States";
-        compareBtn.style.background =
-          "linear-gradient(135deg, #10b981 0%, #0d9488 100%)";
-      }
-
-      // Clear dropdowns
-      state1Select.value = "";
-      state2Select.value = "";
-    });
-  }
-
-  // Handle dropdown changes - sync with map selection
-  if (state1Select) {
-    state1Select.addEventListener("change", (e) => {
-      const stateCode = e.target.value;
-      if (!stateCode) return;
-
-      // Update map selection
-      updateMapSelection(stateCode, 0, stateNames);
-    });
-  }
-
-  if (state2Select) {
-    state2Select.addEventListener("change", (e) => {
-      const stateCode = e.target.value;
-      if (!stateCode) return;
-
-      // Update map selection
-      updateMapSelection(stateCode, 1, stateNames);
-    });
-  }
-
-  // Apply comparison
-  if (applyBtn) {
-    applyBtn.addEventListener("click", () => {
-      const state1 = state1Select.value;
-      const state2 = state2Select.value;
-
-      if (!state1 || !state2) {
-        showToast("Please select both states to compare", "warning");
-        return;
-      }
-
-      if (state1 === state2) {
-        showToast("Please select two different states", "warning");
-        return;
-      }
-
-      renderStateComparison(state1, state2, stateNames);
-    });
-  }
-}
-
-function updateMapSelection(stateCode, position, stateNames) {
-  // Clear all selections first
-  d3.selectAll(".state")
-    .classed("selected-for-comparison", false)
-    .attr("stroke", "#ffffff")
-    .attr("stroke-width", 1)
-    .attr("opacity", 0.85);
-
-  selectedStatesForComparison = [];
-
-  // Get both dropdown values
-  const state1 = document.getElementById("compare-state-1").value;
-  const state2 = document.getElementById("compare-state-2").value;
-
-  // Add to selection array
-  if (state1) {
-    selectedStatesForComparison.push({
-      code: state1,
-      name: stateNames[state1] || `State ${state1}`,
-    });
-  }
-  if (state2 && state2 !== state1) {
-    selectedStatesForComparison.push({
-      code: state2,
-      name: stateNames[state2] || `State ${state2}`,
-    });
-  }
-
-  // Highlight selected states on map
-  selectedStatesForComparison.forEach((state) => {
-    d3.selectAll(".state")
-      .filter(function (d) {
-        const code = String(Math.floor(parseFloat(d.id) || 0));
-        return code === state.code;
-      })
-      .classed("selected-for-comparison", true)
-      .attr("stroke", "#10b981")
-      .attr("stroke-width", 3)
-      .attr("opacity", 1);
-  });
-}
-
-function renderStateComparison(state1Code, state2Code, stateNames) {
-  const resultsContainer = document.getElementById("comparison-results");
-
-  // Calculate state statistics
-  const getStateStats = (stateCode) => {
-    const stateRecords = globalData.filter(
-      (d) => String(Math.floor(parseFloat(d.state) || 0)) === stateCode,
-    );
-
-    if (stateRecords.length === 0) return null;
-
-    const total = stateRecords.length;
-    return {
-      name: stateNames[stateCode] || `State ${stateCode}`,
-      total,
-      strokeRate:
-        (stateRecords.filter((d) => d.has_stroke).length / total) * 100,
-      diabetesRate:
-        (stateRecords.filter((d) => d.has_diabetes).length / total) * 100,
-      obesityRate:
-        (stateRecords.filter((d) => d.is_obese).length / total) * 100,
-      smokingRate:
-        (stateRecords.filter((d) => d.is_smoker).length / total) * 100,
-      heartDiseaseRate:
-        (stateRecords.filter((d) => d.has_heart_disease).length / total) * 100,
-      prediabetesRate:
-        (stateRecords.filter((d) => d.has_prediabetes).length / total) * 100,
-      multipleRisksRate:
-        (stateRecords.filter(
-          (d) =>
-            [
-              d.is_smoker,
-              d.has_diabetes,
-              d.is_obese,
-              d.has_heart_disease,
-            ].filter(Boolean).length >= 2,
-        ).length /
-          total) *
-        100,
-    };
-  };
-
-  const state1Data = getStateStats(state1Code);
-  const state2Data = getStateStats(state2Code);
-
-  if (!state1Data || !state2Data) {
-    resultsContainer.innerHTML = `
-      <div style="text-align: center; padding: 30px; color: #dc2626;">
-        <h4>⚠️ Error</h4>
-        <p>Unable to retrieve data for selected states.</p>
-      </div>
-    `;
-    resultsContainer.style.display = "block";
-    return;
-  }
-
-  // Helper function to get severity class
-  const getSeverityClass = (value) => {
-    if (value >= 15) return "high";
-    if (value >= 8) return "medium";
-    return "low";
-  };
-
-  // Helper function to determine winner (lower is better for health metrics)
-  const getWinner = (val1, val2) => {
-    if (Math.abs(val1 - val2) < 0.5) return "tie";
-    return val1 < val2 ? "state1" : "state2";
-  };
-
-  // Calculate summary
-  const metrics = [
-    { key: "strokeRate", label: "Stroke" },
-    { key: "diabetesRate", label: "Diabetes" },
-    { key: "obesityRate", label: "Obesity" },
-    { key: "smokingRate", label: "Smoking" },
-    { key: "heartDiseaseRate", label: "Heart Disease" },
-  ];
-
-  let state1Wins = 0;
-  let state2Wins = 0;
-
-  metrics.forEach((metric) => {
-    const winner = getWinner(state1Data[metric.key], state2Data[metric.key]);
-    if (winner === "state1") state1Wins++;
-    if (winner === "state2") state2Wins++;
-  });
-
-  // Render comparison
-  resultsContainer.innerHTML = `
-    <div class="comparison-card">
-      <div class="comparison-grid">
-        <!-- State 1 Column -->
-        <div class="state-comparison-column">
-          <h4>
-            📍 ${state1Data.name}
-            ${state1Wins > state2Wins ? '<span class="winner-badge">Better Health</span>' : ""}
-          </h4>
-          
-          <div class="metric-row">
-            <span class="metric-label">📊 Sample Size</span>
-            <span class="metric-value">${state1Data.total.toLocaleString()}</span>
-          </div>
-          
-          <div style="margin: 20px 0; padding-top: 15px; border-top: 2px solid #e5e7eb;">
-            <strong style="color: #0d9488; font-size: 0.9rem;">HEALTH CONDITIONS</strong>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🔴 Stroke</span>
-            <span class="metric-value ${getSeverityClass(state1Data.strokeRate)}">
-              ${state1Data.strokeRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🩸 Diabetes</span>
-            <span class="metric-value ${getSeverityClass(state1Data.diabetesRate)}">
-              ${state1Data.diabetesRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">💔 Heart Disease</span>
-            <span class="metric-value ${getSeverityClass(state1Data.heartDiseaseRate)}">
-              ${state1Data.heartDiseaseRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div style="margin: 20px 0; padding-top: 15px; border-top: 2px solid #e5e7eb;">
-            <strong style="color: #0d9488; font-size: 0.9rem;">RISK FACTORS</strong>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🚬 Smoking</span>
-            <span class="metric-value ${getSeverityClass(state1Data.smokingRate)}">
-              ${state1Data.smokingRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">⚖️ Obesity</span>
-            <span class="metric-value ${getSeverityClass(state1Data.obesityRate)}">
-              ${state1Data.obesityRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">⚠️ Prediabetes</span>
-            <span class="metric-value ${getSeverityClass(state1Data.prediabetesRate)}">
-              ${state1Data.prediabetesRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🔄 Multiple Risks (2+)</span>
-            <span class="metric-value ${getSeverityClass(state1Data.multipleRisksRate)}">
-              ${state1Data.multipleRisksRate.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-
-        <!-- State 2 Column -->
-        <div class="state-comparison-column">
-          <h4>
-            📍 ${state2Data.name}
-            ${state2Wins > state1Wins ? '<span class="winner-badge">Better Health</span>' : ""}
-          </h4>
-          
-          <div class="metric-row">
-            <span class="metric-label">📊 Sample Size</span>
-            <span class="metric-value">${state2Data.total.toLocaleString()}</span>
-          </div>
-          
-          <div style="margin: 20px 0; padding-top: 15px; border-top: 2px solid #e5e7eb;">
-            <strong style="color: #0d9488; font-size: 0.9rem;">HEALTH CONDITIONS</strong>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🔴 Stroke</span>
-            <span class="metric-value ${getSeverityClass(state2Data.strokeRate)}">
-              ${state2Data.strokeRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🩸 Diabetes</span>
-            <span class="metric-value ${getSeverityClass(state2Data.diabetesRate)}">
-              ${state2Data.diabetesRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">💔 Heart Disease</span>
-            <span class="metric-value ${getSeverityClass(state2Data.heartDiseaseRate)}">
-              ${state2Data.heartDiseaseRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div style="margin: 20px 0; padding-top: 15px; border-top: 2px solid #e5e7eb;">
-            <strong style="color: #0d9488; font-size: 0.9rem;">RISK FACTORS</strong>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🚬 Smoking</span>
-            <span class="metric-value ${getSeverityClass(state2Data.smokingRate)}">
-              ${state2Data.smokingRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">⚖️ Obesity</span>
-            <span class="metric-value ${getSeverityClass(state2Data.obesityRate)}">
-              ${state2Data.obesityRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">⚠️ Prediabetes</span>
-            <span class="metric-value ${getSeverityClass(state2Data.prediabetesRate)}">
-              ${state2Data.prediabetesRate.toFixed(2)}%
-            </span>
-          </div>
-          
-          <div class="metric-row">
-            <span class="metric-label">🔄 Multiple Risks (2+)</span>
-            <span class="metric-value ${getSeverityClass(state2Data.multipleRisksRate)}">
-              ${state2Data.multipleRisksRate.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Summary Section -->
-      <div class="comparison-summary">
-        <h5>📈 Key Insights</h5>
-        
-        <div class="summary-item">
-          <strong>🏆 Overall Health Comparison:</strong>
-          ${
-            state1Wins > state2Wins
-              ? `${state1Data.name} has better health outcomes in ${state1Wins} out of ${metrics.length} major indicators.`
-              : state2Wins > state1Wins
-                ? `${state2Data.name} has better health outcomes in ${state2Wins} out of ${metrics.length} major indicators.`
-                : "Both states have similar overall health outcomes."
-          }
-        </div>
-        
-        <div class="summary-item">
-          <strong>📊 Biggest Differences:</strong>
-          ${(() => {
-            const differences = metrics
-              .map((m) => ({
-                label: m.label,
-                diff: Math.abs(state1Data[m.key] - state2Data[m.key]),
-              }))
-              .sort((a, b) => b.diff - a.diff);
-
-            return differences[0].diff > 2
-              ? `The largest disparity is in ${differences[0].label} prevalence (${differences[0].diff.toFixed(2)}% difference).`
-              : "Health metrics are relatively similar between these states.";
-          })()}
-        </div>
-        
-        <div class="summary-item">
-          <strong>⚠️ Shared Challenges:</strong>
-          ${(() => {
-            const highMetrics = metrics.filter(
-              (m) => state1Data[m.key] >= 10 && state2Data[m.key] >= 10,
-            );
-            return highMetrics.length > 0
-              ? `Both states face elevated rates of ${highMetrics.map((m) => m.label).join(", ")}.`
-              : "Both states maintain relatively low prevalence rates across major health indicators.";
-          })()}
-        </div>
-      </div>
-    </div>
-  `;
-
-  resultsContainer.style.display = "block";
-
-  // Scroll to results
-  resultsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-  showToast(
-    `Comparison generated: ${state1Data.name} vs ${state2Data.name}`,
-    "success",
-  );
 }
 
 function addColorLegend(svg, colorScale, width, height) {
@@ -2698,10 +1905,7 @@ function addColorLegend(svg, colorScale, width, height) {
   const legend = svg
     .append("g")
     .attr("class", "legend")
-    .attr(
-      "transform",
-      `translate(${(width - legendWidth) / 2}, ${height + 40})`,
-    );
+    .attr("transform", `translate(${(width - legendWidth) / 2}, ${height + 40})`);
 
   const legendScale = d3
     .scaleLinear()
@@ -2715,7 +1919,9 @@ function addColorLegend(svg, colorScale, width, height) {
 
   // Draw gradient
   const defs = svg.append("defs");
-  const gradient = defs.append("linearGradient").attr("id", "legend-gradient");
+  const gradient = defs
+    .append("linearGradient")
+    .attr("id", "legend-gradient");
 
   gradient
     .selectAll("stop")
@@ -2755,7 +1961,7 @@ function renderDemographicChart() {
   const outcome =
     document.getElementById("demo-outcome-select")?.value || "stroke";
 
-  // Map factor to data key
+  // Aggregate data
   const factorKey = factor === "age" ? "age_group" : factor;
   const outcomeKey =
     outcome === "stroke"
@@ -2766,71 +1972,23 @@ function renderDemographicChart() {
           ? "has_heart_disease"
           : "is_obese";
 
-  // Filter to only records with valid demographic data for selected factor
-  const validData = globalData.filter(
-    (d) => d[factorKey] !== null && d[factorKey] !== undefined,
-  );
-
-  console.log(
-    `\n=== DEMOGRAPHIC CHART: ${factor.toUpperCase()} vs ${outcome.toUpperCase()} ===`,
-  );
-  console.log(`Total records: ${globalData.length}`);
-  console.log(
-    `Valid records with ${factor}: ${validData.length} (${((validData.length / globalData.length) * 100).toFixed(1)}%)`,
-  );
-
-  if (validData.length === 0) {
-    container.html(`
-      <div style="text-align:center;padding:60px;color:#dc2626;">
-        <h3>⚠️ No Data Available</h3>
-        <p>No valid data found for ${factor}. This demographic field may not be populated in your dataset.</p>
-      </div>
-    `);
-    return;
-  }
-
-  // Aggregate data by demographic category
   const aggregated = d3.rollup(
-    validData,
-    (v) => {
-      const cases = v.filter((d) => d[outcomeKey]).length;
-      const total = v.length;
-      return {
-        cases,
-        total,
-        prevalence: (cases / total) * 100,
-      };
-    },
+    globalData,
+    (v) => ({
+      cases: v.filter((d) => d[outcomeKey]).length,
+      total: v.length,
+      prevalence: (v.filter((d) => d[outcomeKey]).length / v.length) * 100,
+    }),
     (d) => d[factorKey],
   );
 
-  // Convert to array and sort
   const data = Array.from(aggregated, ([category, values]) => ({
     category,
     ...values,
-  }))
-    .filter((d) => d.total >= 30) // Filter out categories with very few records
-    .sort((a, b) => b.prevalence - a.prevalence);
-
-  console.log(`Categories with data (n≥30):`);
-  data.forEach((d) => {
-    console.log(
-      `  ${d.category}: ${d.cases}/${d.total} = ${d.prevalence.toFixed(2)}%`,
-    );
-  });
-
-  if (data.length === 0) {
-    container.html(`
-      <div style="text-align:center;padding:60px;color:#dc2626;">
-        <h3>⚠️ Insufficient Data</h3>
-        <p>Not enough records in each category to display meaningful results.</p>
-      </div>
-    `);
-    return;
-  }
+  })).sort((a, b) => b.prevalence - a.prevalence);
 
   // Create chart
-  const margin = { top: 40, right: 40, bottom: 120, left: 80 };
+  const margin = { top: 40, right: 40, bottom: 100, left: 80 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const height = 600 - margin.top - margin.bottom;
@@ -2850,7 +2008,7 @@ function renderDemographicChart() {
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.prevalence) * 1.1]) // Add 10% padding
+    .domain([0, d3.max(data, (d) => d.prevalence)])
     .nice()
     .range([height, 0]);
 
@@ -2867,24 +2025,7 @@ function renderDemographicChart() {
     .call(d3.axisBottom(x))
     .selectAll("text")
     .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end")
-    .style("font-size", "0.85rem")
-    .each(function (d) {
-      const text = d3.select(this);
-      const words = d.split(" ");
-
-      // Wrap long text
-      if (d.length > 20) {
-        text.text("");
-        words.forEach((word, i) => {
-          text
-            .append("tspan")
-            .attr("x", 0)
-            .attr("dy", i === 0 ? 0 : "1.1em")
-            .text(word);
-        });
-      }
-    });
+    .style("text-anchor", "end");
 
   svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
@@ -2903,7 +2044,7 @@ function renderDemographicChart() {
   svg
     .append("text")
     .attr("class", "axis-title")
-    .attr("y", height + 100)
+    .attr("y", height + 80)
     .attr("x", width / 2)
     .style("text-anchor", "middle")
     .text(factor.charAt(0).toUpperCase() + factor.slice(1));
@@ -2934,35 +2075,15 @@ function renderDemographicChart() {
           `
         <strong>${d.category}</strong><br/>
         Prevalence: ${d.prevalence.toFixed(2)}%<br/>
-        Cases: ${d.cases.toLocaleString()} / ${d.total.toLocaleString()}<br/>
-        <span style="font-size: 0.75rem; color: #9ca3af;">Sample size: n=${d.total}</span>
+        Cases: ${d.cases} / ${d.total}
       `,
         )
         .style("left", event.pageX + 10 + "px")
         .style("top", event.pageY - 28 + "px");
-
-      d3.select(this).transition().duration(200).style("opacity", 0.8);
     })
     .on("mouseout", function () {
       tooltip.transition().duration(500).style("opacity", 0);
-
-      d3.select(this).transition().duration(200).style("opacity", 1);
     });
-
-  // Add value labels on bars for clarity
-  svg
-    .selectAll(".bar-label")
-    .data(data)
-    .enter()
-    .append("text")
-    .attr("class", "bar-label")
-    .attr("x", (d) => x(d.category) + x.bandwidth() / 2)
-    .attr("y", (d) => y(d.prevalence) - 5)
-    .attr("text-anchor", "middle")
-    .style("font-size", "0.75rem")
-    .style("font-weight", "600")
-    .style("fill", "#374151")
-    .text((d) => d.prevalence.toFixed(1) + "%");
 }
 
 function setupDemographicControls() {
@@ -2985,6 +2106,7 @@ function initializeCorrelationView() {
   if (!globalData.length) return;
 
   renderCorrelationChart();
+  setupCorrelationControls();
 }
 
 function renderCorrelationChart() {
@@ -3019,7 +2141,7 @@ function renderCorrelationChart() {
   });
 
   // Create heatmap
-  const margin = { top: 140, right: 40, bottom: 100, left: 120 };
+  const margin = { top: 100, right: 40, bottom: 100, left: 120 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const cellSize = Math.min(width / riskFactors.length, 100);
@@ -3115,25 +2237,28 @@ function renderCorrelationChart() {
 
   svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
-  // Title with better spacing
+  // Title
   svg
     .append("text")
     .attr("class", "axis-title")
     .attr("x", (cellSize * riskFactors.length) / 2)
-    .attr("y", -90)
+    .attr("y", -60)
     .style("text-anchor", "middle")
-    .style("font-size", "1.3rem")
-    .style("font-weight", "700")
+    .style("font-size", "1.1rem")
     .text("Risk Factor Co-occurrence Matrix");
+}
 
-  // Subtitle
-  svg
-    .append("text")
-    .attr("x", (cellSize * riskFactors.length) / 2)
-    .attr("y", -55)
-    .style("text-anchor", "middle")
-    .style("font-size", "0.9rem")
-    .style("fill", "#6b7280");
+function setupCorrelationControls() {
+  const primarySelect = document.getElementById("corr-primary-select");
+  const secondarySelect = document.getElementById("corr-secondary-select");
+
+  if (primarySelect) {
+    primarySelect.addEventListener("change", renderCorrelationChart);
+  }
+
+  if (secondarySelect) {
+    secondarySelect.addEventListener("change", renderCorrelationChart);
+  }
 }
 
 // ===========================
