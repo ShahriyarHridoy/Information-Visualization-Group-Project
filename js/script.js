@@ -550,6 +550,12 @@ function initializeNavigation() {
   // View switching
   navButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
+      // Prevent navigation if data is not loaded yet
+      if (!isDataLoaded) {
+        showToast("Please wait for data to load", "warning");
+        return;
+      }
+
       const view = btn.getAttribute("data-view");
       switchView(view);
 
@@ -643,8 +649,8 @@ async function loadData() {
   try {
     // Load CSV data
     const data = await d3.csv(
-      //"data/BRFSS_2024_full.csv",
-      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
+      "data/BRFSS_2024_full.csv",
+      //"https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
       (d) => ({
         age_group: d._AGE_G || d.age_group,
         state: d._STATE || d.state,
@@ -1605,7 +1611,11 @@ function renderGeographicMap() {
       })
 
       .on("mouseover", function (event, d) {
-        d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
+        // d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
+        // Highlight on hover
+        if (!d3.select(this).classed("selected-for-comparison")) {
+          d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
+        }
 
         // Normalize TopoJSON state ID
         const stateCode = String(Math.floor(parseFloat(d.id) || 0));
@@ -1631,6 +1641,15 @@ function renderGeographicMap() {
         }
 
         if (data) {
+          // Enhanced tooltip with click instruction when in comparison mode
+          const comparisonHint = comparisonMode
+            ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #10b981; text-align: center;">
+                <span style="color: #10b981; font-weight: 700; font-size: 0.9rem;">
+                  👆 Click to select for comparison
+                </span>
+              </div>`
+            : "";
+
           tooltip.transition().duration(200).style("opacity", 0.95);
           tooltip
             .html(
@@ -1646,7 +1665,7 @@ function renderGeographicMap() {
                 <strong style="color: #0d9488; font-size: 0.9rem;">📊 POPULATION</strong><br/>
                 <span style="font-size: 0.85rem;">Total Respondents: <strong>${data.total.toLocaleString()}</strong></span><br/>
                 <span style="font-size: 0.85rem;">Most Common Age: <strong>${data.mostCommonAge}</strong></span><br/>
-                <span style="font-size: 0.85rem;">Gender: ${data.malePercent.toFixed(1)}% Male, ${data.femalePercent.toFixed(1)}% Female</span>
+                
               </div>
               
               <div style="margin-bottom: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
@@ -1663,6 +1682,8 @@ function renderGeographicMap() {
                 <span style="font-size: 0.85rem;">⚖️ Obesity: <strong>${data.obesityRate.toFixed(2)}%</strong></span><br/>
                 <span style="font-size: 0.85rem;">🔄 Multiple Risks (2+): <strong>${data.multipleRisksRate.toFixed(2)}%</strong></span>
               </div>
+                            ${comparisonHint}
+
             </div>
           `,
             )
@@ -1676,7 +1697,12 @@ function renderGeographicMap() {
           .style("top", event.pageY - 150 + "px");
       })
       .on("mouseout", function () {
-        d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
+        //  d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
+        // Don't reset opacity if state is selected
+        if (!d3.select(this).classed("selected-for-comparison")) {
+          d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
+        }
+
         tooltip.transition().duration(500).style("opacity", 0);
       });
   }
