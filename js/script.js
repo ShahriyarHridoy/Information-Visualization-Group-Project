@@ -1,7 +1,8 @@
 // ===========================
 // GLOBAL STATE & CONFIGURATION
 // ===========================
-let currentView = "risk-profile";
+let currentView = "geographic";
+
 let globalData = [];
 let stateGeoData = null;
 
@@ -13,8 +14,6 @@ let selectedRiskCombinations = [];
 
 // Geographic view specific state
 let currentGeoPalette = "default";
-let comparisonMode = false;
-let selectedStatesForComparison = [];
 
 // Color palettes (expanded for 50+ states)
 const COLOR_PALETTES = {
@@ -589,12 +588,13 @@ function switchView(view) {
   // Initialize the appropriate visualization
   if (globalData.length > 0) {
     switch (view) {
-      case "risk-profile":
-        initializeRiskProfileView();
-        break;
       case "geographic":
         initializeGeographicView();
         break;
+      case "risk-profile":
+        initializeRiskProfileView();
+        break;
+
       case "demographic":
         initializeDemographicView();
         break;
@@ -610,208 +610,40 @@ function switchView(view) {
 // ===========================
 async function loadData() {
   try {
-    // Load CSV data with proper BRFSS code mapping
-    const data = await d3.csv(
-      //"BRFSS_2024_full.csv"
-      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
-      (d) => {
-        // Helper function to safely parse numeric values
-        const parseNum = (val) => {
-          const num = +val;
-          return isNaN(num) ? null : num;
-        };
+    // Load CSV data
+    const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
+      age_group: d._AGE_G || d.age_group,
+      state: d._STATE || d.state,
+      sex: d.SEX || d.sex,
+      income: d.INCOME3 || d.income,
+      education: d._EDUCAG || d.education,
+      race: d._RACE || d.race,
+      has_stroke: +d.CVDSTRK3 === 1,
+      is_smoker: +d._RFSMOK3 === 1,
+      has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
+      has_prediabetes: +d.PREDIAB2 === 1,
+      is_obese: +d._RFBMI5 === 1,
+      has_heart_disease: +d.CVDCRHD4 === 1,
+      bmi: +d._BMI5 || null,
+    }));
 
-        // Age Group (_AGE_G): 1=18-24, 2=25-34, 3=35-44, 4=45-54, 5=55-64, 6=65+
-        const ageCode = parseNum(d._AGE_G || d.age_group);
-        const ageMap = {
-          1: "18-24",
-          2: "25-34",
-          3: "35-44",
-          4: "45-54",
-          5: "55-64",
-          6: "65+",
-        };
-
-        // Income (INCOME3): 1=<$15k, 2=$15k-<$25k, 3=$25k-<$35k, 4=$35k-<$50k,
-        //                   5=$50k-<$100k, 6=$100k-<$200k, 7=$200k+, 77=Don't know, 99=Refused
-        const incomeCode = parseNum(d.INCOME3 || d.income);
-        const incomeMap = {
-          1: "Less than $15,000",
-          2: "$15,000 to $24,999",
-          3: "$25,000 to $34,999",
-          4: "$35,000 to $49,999",
-          5: "$50,000 to $99,999",
-          6: "$100,000 to $199,999",
-          7: "$200,000 or more",
-          77: null, // Don't know
-          99: null, // Refused
-        };
-
-        // Education (_EDUCAG): 1=Did not graduate HS, 2=Graduated HS, 3=Attended college, 4=Graduated college, 9=Don't know/Missing
-        const educCode = parseNum(d._EDUCAG || d.education);
-        const educMap = {
-          1: "Did not graduate high school",
-          2: "Graduated high school",
-          3: "Attended college or technical school",
-          4: "Graduated from college or technical school",
-          9: null, // Don't know/Missing
-        };
-
-        // Race (_RACE): 1=White, 2=Black, 3=Native American/Alaskan, 4=Asian, 5=Native Hawaiian/Pacific Islander
-        //               6=Other, 7=Multiracial, 8=Hispanic, 9=Don't know/Refused
-        const raceCode = parseNum(d._RACE || d.race);
-        const raceMap = {
-          1: "White only, non-Hispanic",
-          2: "Black only, non-Hispanic",
-          3: "American Indian or Alaskan Native only, non-Hispanic",
-          4: "Asian only, non-Hispanic",
-          5: "Native Hawaiian or other Pacific Islander only, non-Hispanic",
-          6: "Other race only, non-Hispanic",
-          7: "Multiracial, non-Hispanic",
-          8: "Hispanic",
-          9: null, // Don't know/Refused
-        };
-
-        // Health outcomes
-        // CVDSTRK3: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const strokeCode = parseNum(d.CVDSTRK3);
-
-        // _RFSMOK3: 1=Current smoker (smokes every day or some days), 2=Not current smoker, 9=Don't know/Missing
-        const smokerCode = parseNum(d._RFSMOK3);
-
-        // DIABETE4: 1=Yes, 2=Yes but female told only during pregnancy, 3=No, 4=No, pre-diabetes or borderline, 7=Don't know, 9=Refused
-        const diabetesCode = parseNum(d.DIABETE4);
-
-        // PREDIAB2: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const prediabCode = parseNum(d.PREDIAB2);
-
-        // _RFBMI5: 1=No (not overweight or obese), 2=Yes (overweight or obese), 9=Don't know/Missing
-        const obeseCode = parseNum(d._RFBMI5);
-
-        // CVDCRHD4: 1=Yes, 2=No, 7=Don't know, 9=Refused
-        const heartCode = parseNum(d.CVDCRHD4);
-
-        return {
-          // Demographics with readable labels
-          age_group: ageMap[ageCode] || null,
-          age_group_code: ageCode,
-          state: d._STATE || d.state,
-          sex: d.SEX || d.sex,
-          income: incomeMap[incomeCode] || null,
-          income_code: incomeCode,
-          education: educMap[educCode] || null,
-          education_code: educCode,
-          race: raceMap[raceCode] || null,
-          race_code: raceCode,
-
-          // Health outcomes (1 = Yes, everything else = No)
-          has_stroke: strokeCode === 1,
-          is_smoker: smokerCode === 1,
-          has_diabetes: diabetesCode === 1 || diabetesCode === 2, // Include gestational diabetes
-          has_prediabetes: prediabCode === 1 || diabetesCode === 4, // Explicit prediabetes or borderline
-          is_obese: obeseCode === 2, // Note: BRFSS uses 2=Yes for obesity
-          has_heart_disease: heartCode === 1,
-          bmi: parseNum(d._BMI5) || null,
-
-          // Keep raw codes for debugging
-          _raw_age: d._AGE_G,
-          _raw_income: d.INCOME3,
-          _raw_education: d._EDUCAG,
-          _raw_race: d._RACE,
-        };
-      },
-    );
-
-    // IMPORTANT: Only filter out records that are completely invalid
-    // Keep records with valid age_group for risk analysis, even if other demographics are missing
-    globalData = data.filter((d) => d.age_group !== null);
+    globalData = data.filter((d) => d.age_group);
     allRecords = globalData; // For Risk Factor Analysis
 
     console.log("=== DATA LOADED ===");
     console.log("Total records:", globalData.length);
-
-    if (globalData.length === 0) {
-      console.error("ERROR: No data loaded! Check CSV file and column names.");
-      showError("No data could be loaded. Please verify your CSV file format.");
-      return;
-    }
-
-    // Debug: Check demographic data quality
-    console.log("\n=== DEMOGRAPHIC DATA QUALITY ===");
-    const withAge = globalData.filter((d) => d.age_group).length;
-    const withIncome = globalData.filter((d) => d.income).length;
-    const withEducation = globalData.filter((d) => d.education).length;
-    const withRace = globalData.filter((d) => d.race).length;
-
-    console.log(
-      `Records with age: ${withAge} (${((withAge / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with income: ${withIncome} (${((withIncome / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with education: ${withEducation} (${((withEducation / globalData.length) * 100).toFixed(1)}%)`,
-    );
-    console.log(
-      `Records with race: ${withRace} (${((withRace / globalData.length) * 100).toFixed(1)}%)`,
-    );
-
-    // Sample demographic distribution
-    console.log("\n=== SAMPLE AGE DISTRIBUTION ===");
-    const ageDist = d3.rollup(
-      globalData,
-      (v) => v.length,
-      (d) => d.age_group,
-    );
-    Array.from(ageDist.entries())
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([age, count]) => {
-        console.log(
-          `${age}: ${count} (${((count / globalData.length) * 100).toFixed(1)}%)`,
-        );
-      });
-
-    console.log("\n=== SAMPLE HEALTH OUTCOMES ===");
-    const strokeCount = globalData.filter((d) => d.has_stroke).length;
-    const diabetesCount = globalData.filter((d) => d.has_diabetes).length;
-    const obeseCount = globalData.filter((d) => d.is_obese).length;
-    const smokerCount = globalData.filter((d) => d.is_smoker).length;
-
-    console.log(
-      `Stroke: ${strokeCount} (${((strokeCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Diabetes: ${diabetesCount} (${((diabetesCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Obesity: ${obeseCount} (${((obeseCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-    console.log(
-      `Smoking: ${smokerCount} (${((smokerCount / globalData.length) * 100).toFixed(2)}%)`,
-    );
-
     const uniqueStates = Array.from(
       new Set(globalData.map((d) => d.state)),
     ).sort();
-    console.log("\n=== STATE DATA ===");
     console.log("Unique states in data:", uniqueStates.length);
-    console.log(
-      "State codes found:",
-      uniqueStates.slice(0, 10).join(", "),
-      "...",
-    );
+    console.log("State codes found:", uniqueStates);
 
     // Initialize the current view
-    console.log("\n=== INITIALIZING VIEWS ===");
-    initializeRiskProfileView();
-    console.log("Risk Profile View initialized");
+    // initializeRiskProfileView();
+    initializeGeographicView();
   } catch (error) {
     console.error("Error loading data:", error);
-    console.error("Error details:", error.message);
-    console.error("Stack trace:", error.stack);
-    showError(
-      "Failed to load data. Please check the CSV file and browser console for details.",
-    );
+    showError("Failed to load data. Please check the CSV file.");
   }
 }
 
@@ -829,22 +661,16 @@ function initializeRiskProfileView() {
 }
 
 // Convert BRFSS age codes to readable labels
-function mapAgeGroup(ageValue) {
-  // If already a readable label, return as-is
-  if (typeof ageValue === "string" && ageValue.includes("-")) {
-    return ageValue;
-  }
-
-  // Otherwise map from code
+function mapAgeGroup(code) {
   const ageMap = {
-    1: "18-24",
-    2: "25-34",
-    3: "35-44",
-    4: "45-54",
-    5: "55-64",
-    6: "65+",
+    1: "18-34",
+    2: "35-44",
+    3: "45-54",
+    4: "55-64",
+    5: "65-74",
+    6: "75+",
   };
-  return ageMap[+ageValue] || null;
+  return ageMap[+code] || null;
 }
 
 // Count risk factors from label text
@@ -930,7 +756,6 @@ function aggregateDefaultProfiles(data) {
           !r.is_obese &&
           !r.has_heart_disease,
       },
-
       {
         label: "Two Risk Factors",
         filter: (r) =>
@@ -1045,12 +870,65 @@ function aggregateCustomSelections(data, combinations) {
   return results;
 }
 
+// Update legend display
+function updateLegend(svg, riskProfiles, colorScale) {
+  // Remove existing legend
+  svg.selectAll(".legend").remove();
+
+  const legend = svg
+    .append("g")
+    .attr("class", "legend")
+    .attr("transform", "translate(0,-45)");
+
+  const itemsPerRow = 3;
+  const itemWidth = 230;
+  const itemHeight = 28;
+
+  riskProfiles.forEach((rp, i) => {
+    const row = Math.floor(i / itemsPerRow);
+    const col = i % itemsPerRow;
+
+    const g = legend
+      .append("g")
+      .attr("transform", `translate(${col * itemWidth},${row * itemHeight})`);
+
+    g.append("rect")
+      .attr("x", 0)
+      .attr("y", -10)
+      .attr("width", 14)
+      .attr("height", 14)
+      .attr("fill", colorScale(rp))
+      .attr("stroke", "#111827")
+      .attr("stroke-width", 0.8)
+      .attr("rx", 2);
+
+    const text = g
+      .append("text")
+      .attr("x", 20)
+      .attr("y", 0)
+      .attr("dominant-baseline", "central")
+      .style("font-size", "0.75rem")
+      .style("font-weight", "500");
+
+    // Truncate long labels
+    const maxLength = 28;
+    if (rp.length > maxLength) {
+      text
+        .text(rp.substring(0, maxLength) + "...")
+        .append("title")
+        .text(rp);
+    } else {
+      text.text(rp);
+    }
+  });
+}
+
 // Update chart with new data
 function updateChart(data, metric, animate) {
   const container = d3.select("#chart-container");
   container.html("");
 
-  const margin = { top: 60, right: 20, bottom: 100, left: 70 };
+  const margin = { top: 60, right: 20, bottom: 70, left: 70 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const height = 520 - margin.top - margin.bottom;
@@ -1066,7 +944,8 @@ function updateChart(data, metric, animate) {
   let riskProfiles = Array.from(new Set(data.map((d) => d.risk_profile)));
   riskProfiles = sortRiskProfilesSequentially(riskProfiles);
 
-  const ageGroups = Array.from(new Set(data.map((d) => d.age_group)));
+  // Define age groups in ascending order (youngest to oldest - minimum to maximum)
+  const ageGroups = ["18-34", "35-44", "45-54", "55-64", "65-74", "75+"];
 
   // Scales
   const x0 = d3
@@ -1134,42 +1013,12 @@ function updateChart(data, metric, animate) {
     .append("text")
     .attr("class", "axis-title")
     .attr("x", width / 2)
-    .attr("y", height + 65)
+    .attr("y", height + 50)
     .attr("text-anchor", "middle")
     .text("Age group (years)");
 
-  // Legend
-  const legend = svg
-    .append("g")
-    .attr("class", "legend")
-    .attr("transform", "translate(0,-45)");
-
-  const legendItems = legend
-    .selectAll(".legend-item")
-    .data(riskProfiles)
-    .enter()
-    .append("g")
-    .attr("class", "legend-item")
-    .attr(
-      "transform",
-      (d, i) => `translate(${(i % 3) * 300}, ${Math.floor(i / 3) * 22})`,
-    );
-
-  legendItems
-    .append("rect")
-    .attr("width", 16)
-    .attr("height", 16)
-    .attr("fill", (d) => colorScale(d))
-    .attr("stroke", "#1f2937")
-    .attr("stroke-width", 0.5);
-
-  legendItems
-    .append("text")
-    .attr("x", 22)
-    .attr("y", 13)
-    .style("font-size", "0.82rem")
-    .style("font-weight", "500")
-    .text((d) => d);
+  // Update legend
+  updateLegend(svg, riskProfiles, colorScale);
 
   // Tooltip
   const tooltip = d3
@@ -2755,7 +2604,7 @@ function renderDemographicChart() {
   const outcome =
     document.getElementById("demo-outcome-select")?.value || "stroke";
 
-  // Map factor to data key
+  // Aggregate data
   const factorKey = factor === "age" ? "age_group" : factor;
   const outcomeKey =
     outcome === "stroke"
@@ -2766,71 +2615,39 @@ function renderDemographicChart() {
           ? "has_heart_disease"
           : "is_obese";
 
-  // Filter to only records with valid demographic data for selected factor
-  const validData = globalData.filter(
-    (d) => d[factorKey] !== null && d[factorKey] !== undefined,
-  );
+  // Meaningful label mappings
+  const factorLabels = {
+    age: "Age Group",
+    sex: "Gender",
+    income: "Income Level",
+    education: "Education Level",
+    race: "Race/Ethnicity",
+  };
 
-  console.log(
-    `\n=== DEMOGRAPHIC CHART: ${factor.toUpperCase()} vs ${outcome.toUpperCase()} ===`,
-  );
-  console.log(`Total records: ${globalData.length}`);
-  console.log(
-    `Valid records with ${factor}: ${validData.length} (${((validData.length / globalData.length) * 100).toFixed(1)}%)`,
-  );
+  const outcomeLabels = {
+    stroke: "Stroke",
+    diabetes: "Diabetes",
+    heart_disease: "Heart Disease",
+    obesity: "Obesity",
+  };
 
-  if (validData.length === 0) {
-    container.html(`
-      <div style="text-align:center;padding:60px;color:#dc2626;">
-        <h3>⚠️ No Data Available</h3>
-        <p>No valid data found for ${factor}. This demographic field may not be populated in your dataset.</p>
-      </div>
-    `);
-    return;
-  }
-
-  // Aggregate data by demographic category
   const aggregated = d3.rollup(
-    validData,
-    (v) => {
-      const cases = v.filter((d) => d[outcomeKey]).length;
-      const total = v.length;
-      return {
-        cases,
-        total,
-        prevalence: (cases / total) * 100,
-      };
-    },
+    globalData,
+    (v) => ({
+      cases: v.filter((d) => d[outcomeKey]).length,
+      total: v.length,
+      prevalence: (v.filter((d) => d[outcomeKey]).length / v.length) * 100,
+    }),
     (d) => d[factorKey],
   );
 
-  // Convert to array and sort
   const data = Array.from(aggregated, ([category, values]) => ({
     category,
     ...values,
-  }))
-    .filter((d) => d.total >= 30) // Filter out categories with very few records
-    .sort((a, b) => b.prevalence - a.prevalence);
-
-  console.log(`Categories with data (n≥30):`);
-  data.forEach((d) => {
-    console.log(
-      `  ${d.category}: ${d.cases}/${d.total} = ${d.prevalence.toFixed(2)}%`,
-    );
-  });
-
-  if (data.length === 0) {
-    container.html(`
-      <div style="text-align:center;padding:60px;color:#dc2626;">
-        <h3>⚠️ Insufficient Data</h3>
-        <p>Not enough records in each category to display meaningful results.</p>
-      </div>
-    `);
-    return;
-  }
+  })).sort((a, b) => b.prevalence - a.prevalence);
 
   // Create chart
-  const margin = { top: 40, right: 40, bottom: 120, left: 80 };
+  const margin = { top: 40, right: 40, bottom: 100, left: 80 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const height = 600 - margin.top - margin.bottom;
@@ -2850,7 +2667,7 @@ function renderDemographicChart() {
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.prevalence) * 1.1]) // Add 10% padding
+    .domain([0, d3.max(data, (d) => d.prevalence)])
     .nice()
     .range([height, 0]);
 
@@ -2867,24 +2684,7 @@ function renderDemographicChart() {
     .call(d3.axisBottom(x))
     .selectAll("text")
     .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end")
-    .style("font-size", "0.85rem")
-    .each(function (d) {
-      const text = d3.select(this);
-      const words = d.split(" ");
-
-      // Wrap long text
-      if (d.length > 20) {
-        text.text("");
-        words.forEach((word, i) => {
-          text
-            .append("tspan")
-            .attr("x", 0)
-            .attr("dy", i === 0 ? 0 : "1.1em")
-            .text(word);
-        });
-      }
-    });
+    .style("text-anchor", "end");
 
   svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
@@ -2896,17 +2696,17 @@ function renderDemographicChart() {
     .attr("y", -60)
     .attr("x", -height / 2)
     .style("text-anchor", "middle")
-    .text(
-      `${outcome.charAt(0).toUpperCase() + outcome.slice(1)} Prevalence (%)`,
-    );
+    .text(`${outcomeLabels[outcome]} Prevalence (%)`);
 
   svg
     .append("text")
     .attr("class", "axis-title")
-    .attr("y", height + 100)
+    .attr("y", height + 80)
     .attr("x", width / 2)
     .style("text-anchor", "middle")
-    .text(factor.charAt(0).toUpperCase() + factor.slice(1));
+    .text(
+      factorLabels[factor] || factor.charAt(0).toUpperCase() + factor.slice(1),
+    );
 
   // Tooltip
   const tooltip = d3
@@ -2934,35 +2734,15 @@ function renderDemographicChart() {
           `
         <strong>${d.category}</strong><br/>
         Prevalence: ${d.prevalence.toFixed(2)}%<br/>
-        Cases: ${d.cases.toLocaleString()} / ${d.total.toLocaleString()}<br/>
-        <span style="font-size: 0.75rem; color: #9ca3af;">Sample size: n=${d.total}</span>
+        Cases: ${d.cases} / ${d.total}
       `,
         )
         .style("left", event.pageX + 10 + "px")
         .style("top", event.pageY - 28 + "px");
-
-      d3.select(this).transition().duration(200).style("opacity", 0.8);
     })
     .on("mouseout", function () {
       tooltip.transition().duration(500).style("opacity", 0);
-
-      d3.select(this).transition().duration(200).style("opacity", 1);
     });
-
-  // Add value labels on bars for clarity
-  svg
-    .selectAll(".bar-label")
-    .data(data)
-    .enter()
-    .append("text")
-    .attr("class", "bar-label")
-    .attr("x", (d) => x(d.category) + x.bandwidth() / 2)
-    .attr("y", (d) => y(d.prevalence) - 5)
-    .attr("text-anchor", "middle")
-    .style("font-size", "0.75rem")
-    .style("font-weight", "600")
-    .style("fill", "#374151")
-    .text((d) => d.prevalence.toFixed(1) + "%");
 }
 
 function setupDemographicControls() {
@@ -2985,6 +2765,7 @@ function initializeCorrelationView() {
   if (!globalData.length) return;
 
   renderCorrelationChart();
+  setupCorrelationControls();
 }
 
 function renderCorrelationChart() {
@@ -3019,7 +2800,7 @@ function renderCorrelationChart() {
   });
 
   // Create heatmap
-  const margin = { top: 140, right: 40, bottom: 100, left: 120 };
+  const margin = { top: 100, right: 40, bottom: 100, left: 120 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const cellSize = Math.min(width / riskFactors.length, 100);
@@ -3115,25 +2896,28 @@ function renderCorrelationChart() {
 
   svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
-  // Title with better spacing
+  // Title
   svg
     .append("text")
     .attr("class", "axis-title")
     .attr("x", (cellSize * riskFactors.length) / 2)
-    .attr("y", -90)
+    .attr("y", -60)
     .style("text-anchor", "middle")
-    .style("font-size", "1.3rem")
-    .style("font-weight", "700")
+    .style("font-size", "1.1rem")
     .text("Risk Factor Co-occurrence Matrix");
+}
 
-  // Subtitle
-  svg
-    .append("text")
-    .attr("x", (cellSize * riskFactors.length) / 2)
-    .attr("y", -55)
-    .style("text-anchor", "middle")
-    .style("font-size", "0.9rem")
-    .style("fill", "#6b7280");
+function setupCorrelationControls() {
+  const primarySelect = document.getElementById("corr-primary-select");
+  const secondarySelect = document.getElementById("corr-secondary-select");
+
+  if (primarySelect) {
+    primarySelect.addEventListener("change", renderCorrelationChart);
+  }
+
+  if (secondarySelect) {
+    secondarySelect.addEventListener("change", renderCorrelationChart);
+  }
 }
 
 // ===========================
