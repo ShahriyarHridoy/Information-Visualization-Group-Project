@@ -2,6 +2,7 @@
 // GLOBAL STATE & CONFIGURATION
 // ===========================
 let currentView = "geographic";
+
 let globalData = [];
 let stateGeoData = null;
 
@@ -587,12 +588,13 @@ function switchView(view) {
   // Initialize the appropriate visualization
   if (globalData.length > 0) {
     switch (view) {
-      case "risk-profile":
-        initializeRiskProfileView();
-        break;
       case "geographic":
         initializeGeographicView();
         break;
+      case "risk-profile":
+        initializeRiskProfileView();
+        break;
+
       case "demographic":
         initializeDemographicView();
         break;
@@ -609,21 +611,26 @@ function switchView(view) {
 async function loadData() {
   try {
     // Load CSV data
-    const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
-      age_group: d._AGE_G || d.age_group,
-      state: d._STATE || d.state,
-      sex: d.SEX || d.sex,
-      income: d.INCOME3 || d.income,
-      education: d._EDUCAG || d.education,
-      race: d._RACE || d.race,
-      has_stroke: +d.CVDSTRK3 === 1,
-      is_smoker: +d._RFSMOK3 === 1,
-      has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
-      has_prediabetes: +d.PREDIAB2 === 1,
-      is_obese: +d._RFBMI5 === 1,
-      has_heart_disease: +d.CVDCRHD4 === 1,
-      bmi: +d._BMI5 || null,
-    }));
+    const data = await d3.csv(
+      "data/BRFSS_2024_full.csv",
+      //"https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
+
+      (d) => ({
+        age_group: d._AGE_G || d.age_group,
+        state: d._STATE || d.state,
+        sex: d.SEX || d.sex,
+        income: d.INCOME3 || d.income,
+        education: d._EDUCAG || d.education,
+        race: d._RACE || d.race,
+        has_stroke: +d.CVDSTRK3 === 1,
+        is_smoker: +d._RFSMOK3 === 1,
+        has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
+        has_prediabetes: +d.PREDIAB2 === 1,
+        is_obese: +d._RFBMI5 === 1,
+        has_heart_disease: +d.CVDCRHD4 === 1,
+        bmi: +d._BMI5 || null,
+      }),
+    );
 
     globalData = data.filter((d) => d.age_group);
     allRecords = globalData; // For Risk Factor Analysis
@@ -637,6 +644,7 @@ async function loadData() {
     console.log("State codes found:", uniqueStates);
 
     // Initialize the current view
+    // initializeRiskProfileView();
     initializeGeographicView();
   } catch (error) {
     console.error("Error loading data:", error);
@@ -1559,9 +1567,11 @@ function renderGeographicMap() {
         // Handle state selection for comparison
         handleStateClick(stateCode, d3.select(this), stateNames);
       })
-
       .on("mouseover", function (event, d) {
-        d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
+        // Highlight on hover
+        if (!d3.select(this).classed("selected-for-comparison")) {
+          d3.select(this).attr("opacity", 1).attr("stroke-width", 2.5);
+        }
 
         // Normalize TopoJSON state ID
         const stateCode = String(Math.floor(parseFloat(d.id) || 0));
@@ -1587,6 +1597,15 @@ function renderGeographicMap() {
         }
 
         if (data) {
+          // Enhanced tooltip with click instruction when in comparison mode
+          const comparisonHint = comparisonMode
+            ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #10b981; text-align: center;">
+                <span style="color: #10b981; font-weight: 700; font-size: 0.9rem;">
+                  👆 Click to select for comparison
+                </span>
+              </div>`
+            : "";
+
           tooltip.transition().duration(200).style("opacity", 0.95);
           tooltip
             .html(
@@ -1619,6 +1638,7 @@ function renderGeographicMap() {
                 <span style="font-size: 0.85rem;">⚖️ Obesity: <strong>${data.obesityRate.toFixed(2)}%</strong></span><br/>
                 <span style="font-size: 0.85rem;">🔄 Multiple Risks (2+): <strong>${data.multipleRisksRate.toFixed(2)}%</strong></span>
               </div>
+              ${comparisonHint}
             </div>
           `,
             )
@@ -1632,7 +1652,10 @@ function renderGeographicMap() {
           .style("top", event.pageY - 150 + "px");
       })
       .on("mouseout", function () {
-        d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
+        // Don't reset opacity if state is selected
+        if (!d3.select(this).classed("selected-for-comparison")) {
+          d3.select(this).attr("opacity", 0.85).attr("stroke-width", 1);
+        }
         tooltip.transition().duration(500).style("opacity", 0);
       });
   }
@@ -1848,7 +1871,7 @@ function renderSimulatedGeographic() {
             <strong style="color: #0d9488; font-size: 0.9rem;">📊 POPULATION</strong><br/>
             <span style="font-size: 0.85rem;">Total Respondents: <strong>${d.total.toLocaleString()}</strong></span><br/>
             <span style="font-size: 0.85rem;">Most Common Age: <strong>${d.mostCommonAge}</strong></span><br/>
-            <span style="font-size: 0.85rem;">Gender: ${d.malePercent.toFixed(1)}% Male, ${d.femalePercent.toFixed(1)}% Female</span>
+         
           </div>
           
           <div style="margin-bottom: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
@@ -2121,7 +2144,6 @@ function setupStateComparison() {
       );
     });
   }
-
   if (resetComBtn) {
     resetComBtn.addEventListener("click", () => {
       comparisonPanel.style.display = "none";
@@ -2149,7 +2171,6 @@ function setupStateComparison() {
       state2Select.value = "";
     });
   }
-
   if (closeBtn) {
     closeBtn.addEventListener("click", () => {
       comparisonPanel.style.display = "none";
