@@ -602,6 +602,36 @@ function initializeNavigation() {
 function switchView(view) {
   currentView = view;
 
+  // Close any open panels when switching views
+  const riskPanel = document.getElementById("risk-customization-panel");
+  const comparisonPanel = document.getElementById("state-comparison-panel");
+
+  if (riskPanel) {
+    riskPanel.style.display = "none";
+  }
+
+  if (comparisonPanel) {
+    comparisonPanel.style.display = "none";
+    // Also reset comparison mode
+    comparisonMode = false;
+    selectedStatesForComparison = [];
+
+    // Clear any selected states visual styling
+    d3.selectAll(".state")
+      .classed("selected-for-comparison", false)
+      .attr("stroke", "#ffffff")
+      .attr("stroke-width", 1)
+      .attr("opacity", 0.85);
+
+    // Reset compare button if it exists
+    const compareBtn = document.getElementById("compare-states-btn");
+    if (compareBtn) {
+      compareBtn.textContent = "🔍 Compare States";
+      compareBtn.style.background =
+        "linear-gradient(135deg, #10b981 0%, #0d9488 100%)";
+    }
+  }
+
   // Hide all views
   document.querySelectorAll(".view-container").forEach((v) => {
     v.classList.remove("active");
@@ -1172,16 +1202,40 @@ function setupRiskProfileControls() {
   const closeBtn = document.getElementById("close-panel-btn");
 
   if (customizeBtn && panel) {
-    customizeBtn.addEventListener("click", () => {
-      const isHidden = panel.style.display === "none";
+    // Remove any existing listeners to prevent duplicates
+    const newCustomizeBtn = customizeBtn.cloneNode(true);
+    customizeBtn.parentNode.replaceChild(newCustomizeBtn, customizeBtn);
+
+    newCustomizeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isHidden =
+        panel.style.display === "none" ||
+        !panel.style.display ||
+        panel.style.display === "";
       panel.style.display = isHidden ? "block" : "none";
 
       if (isHidden) {
         console.log("Opening customization panel");
+        // Ensure panel is above other elements
+        panel.style.zIndex = "1000";
         setTimeout(() => setupCheckboxListeners(), 50);
       }
     });
   }
+
+  // if (customizeBtn && panel) {
+  //   customizeBtn.addEventListener("click", () => {
+  //     const isHidden = panel.style.display === "none";
+  //     panel.style.display = isHidden ? "block" : "none";
+
+  //     if (isHidden) {
+  //       console.log("Opening customization panel");
+  //       setTimeout(() => setupCheckboxListeners(), 50);
+  //     }
+  //   });
+  // }
 
   if (closeBtn && panel) {
     closeBtn.addEventListener("click", () => {
