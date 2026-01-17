@@ -14,6 +14,39 @@ let selectedRiskCombinations = [];
 // Geographic view specific state
 let currentGeoPalette = "default";
 
+// State comparison variables
+let comparisonMode = false;
+let selectedStatesForComparison = [];
+
+// Loading state
+let isDataLoaded = false;
+
+// ===========================
+// LOADER FUNCTIONS
+// ===========================
+function showLoader() {
+  const loader = document.getElementById("global-loader");
+  if (loader) {
+    loader.classList.remove("hidden");
+    document.body.classList.add("loading-data");
+  }
+}
+
+function hideLoader() {
+  const loader = document.getElementById("global-loader");
+  if (loader) {
+    // Add a small delay for smooth transition
+    setTimeout(() => {
+      loader.classList.add("hidden");
+      document.body.classList.remove("loading-data");
+      isDataLoaded = true;
+    }, 500);
+  }
+}
+
+// Rest of the script content will be added from the uploaded file
+// but with modifications to loadData() function
+
 // Color palettes (expanded for 50+ states)
 const COLOR_PALETTES = {
   default: [
@@ -609,21 +642,25 @@ function switchView(view) {
 async function loadData() {
   try {
     // Load CSV data
-    const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
-      age_group: d._AGE_G || d.age_group,
-      state: d._STATE || d.state,
-      sex: d.SEX || d.sex,
-      income: d.INCOME3 || d.income,
-      education: d._EDUCAG || d.education,
-      race: d._RACE || d.race,
-      has_stroke: +d.CVDSTRK3 === 1,
-      is_smoker: +d._RFSMOK3 === 1,
-      has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
-      has_prediabetes: +d.PREDIAB2 === 1,
-      is_obese: +d._RFBMI5 === 1,
-      has_heart_disease: +d.CVDCRHD4 === 1,
-      bmi: +d._BMI5 || null,
-    }));
+    const data = await d3.csv(
+      //"data/BRFSS_2024_full.csv",
+      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
+      (d) => ({
+        age_group: d._AGE_G || d.age_group,
+        state: d._STATE || d.state,
+        sex: d.SEX || d.sex,
+        income: d.INCOME3 || d.income,
+        education: d._EDUCAG || d.education,
+        race: d._RACE || d.race,
+        has_stroke: +d.CVDSTRK3 === 1,
+        is_smoker: +d._RFSMOK3 === 1,
+        has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
+        has_prediabetes: +d.PREDIAB2 === 1,
+        is_obese: +d._RFBMI5 === 1,
+        has_heart_disease: +d.CVDCRHD4 === 1,
+        bmi: +d._BMI5 || null,
+      }),
+    );
 
     globalData = data.filter((d) => d.age_group);
     allRecords = globalData; // For Risk Factor Analysis
@@ -638,8 +675,15 @@ async function loadData() {
 
     // Initialize the current view
     initializeGeographicView();
+
+    // Hide loader after data is loaded and view is initialized
+    hideLoader();
   } catch (error) {
     console.error("Error loading data:", error);
+
+    // Hide loader after data is loaded and view is initialized
+    hideLoader();
+
     showError("Failed to load data. Please check the CSV file.");
   }
 }
