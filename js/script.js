@@ -563,6 +563,18 @@ function initializeNavigation() {
       navButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
 
+      // Scroll to top of the page smoothly
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      // Alternative: If scroll the main-content div instead
+      // const mainContent = document.getElementById("main-content");
+      // if (mainContent) {
+      //   mainContent.scrollTop = 0;
+      // }
+
       // Close sidebar on mobile
       if (window.innerWidth <= 1024) {
         sidenav.classList.remove("open");
@@ -649,8 +661,8 @@ async function loadData() {
   try {
     // Load CSV data
     const data = await d3.csv(
-      "data/BRFSS_2024_full.csv",
-      //"https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
+      //"data/BRFSS_2024_full.csv",
+      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
       (d) => ({
         age_group: d._AGE_G || d.age_group,
         state: d._STATE || d.state,
@@ -2712,6 +2724,63 @@ function renderDemographicChart() {
     obesity: "Obesity",
   };
 
+  // Category label mappings - Organized by factor type with STRING keys
+  const allCategoryLabels = {
+    age_group: {
+      1: "18-24 years",
+      2: "25-34 years",
+      3: "35-44 years",
+      4: "45-54 years",
+      5: "55-64 years",
+      6: "65+ years",
+    },
+    sex: {
+      1: "Male",
+      2: "Female",
+    },
+    income: {
+      1: "< $15,000",
+      2: "$15,000-$25,000",
+      3: "$25,000-$35,000",
+      4: "$35,000-$50,000",
+      5: "$50,000-$75,000",
+      6: "$75,000-$100,000",
+      7: "$100,000-$200,000",
+      8: "$200,000+",
+      9: "Unknown",
+    },
+    education: {
+      1: "Did not graduate HS",
+      2: "Graduated HS",
+      3: "Attended college",
+      4: "Graduated college",
+      9: "Unknown",
+    },
+    race: {
+      1: "White",
+      2: "Black",
+      3: "American Indian/Alaska Native",
+      4: "Asian",
+      5: "Native Hawaiian/Pacific Islander",
+      6: "Other race",
+      7: "Multiracial",
+      8: "Hispanic",
+      9: "Unknown",
+    },
+  };
+
+  // Get the appropriate labels for current factor
+  const categoryLabels = allCategoryLabels[factorKey] || {};
+
+  // Define ordering for each demographic factor (min to max)
+  const categoryOrders = {
+    age_group: ["1", "2", "3", "4", "5", "6"],
+    sex: ["1", "2"],
+    income: ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    education: ["1", "2", "3", "4", "9"],
+    race: ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  };
+
   const aggregated = d3.rollup(
     globalData,
     (v) => ({
@@ -2719,16 +2788,52 @@ function renderDemographicChart() {
       total: v.length,
       prevalence: (v.filter((d) => d[outcomeKey]).length / v.length) * 100,
     }),
-    (d) => d[factorKey],
+    (d) => {
+      // Convert to string and remove decimal part (e.g., "6.0" -> "6")
+      const rawValue = String(d[factorKey]);
+      const cleaned = rawValue.includes(".")
+        ? String(Math.floor(parseFloat(rawValue)))
+        : rawValue;
+      return cleaned;
+    },
   );
 
-  const data = Array.from(aggregated, ([category, values]) => ({
-    category,
-    ...values,
-  })).sort((a, b) => b.prevalence - a.prevalence);
+  // Convert to array
+  let data = Array.from(aggregated, ([category, values]) => {
+    const categoryStr = String(category);
+    return {
+      category: categoryStr,
+      categoryLabel: categoryLabels[categoryStr] || categoryStr,
+      ...values,
+    };
+  });
+
+  // Sort data according to the defined order (min to max)
+  const order = categoryOrders[factorKey] || [];
+  if (order.length > 0) {
+    // Sort by predefined order
+    data.sort((a, b) => {
+      const indexA = order.indexOf(a.category);
+      const indexB = order.indexOf(b.category);
+
+      // If both found in order array, sort by index
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+
+      // If one not found, put it at the end
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+
+      return 0;
+    });
+  } else {
+    // Fallback: sort alphabetically by label if no order defined
+    data.sort((a, b) => a.categoryLabel.localeCompare(b.categoryLabel));
+  }
 
   // Create chart
-  const margin = { top: 40, right: 40, bottom: 100, left: 80 };
+  const margin = { top: 40, right: 40, bottom: 120, left: 80 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const height = 600 - margin.top - margin.bottom;
@@ -2742,7 +2847,7 @@ function renderDemographicChart() {
 
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
+    .domain(data.map((d) => d.categoryLabel))
     .range([0, width])
     .padding(0.2);
 
@@ -2754,7 +2859,7 @@ function renderDemographicChart() {
 
   const color = d3
     .scaleOrdinal()
-    .domain(data.map((d) => d.category))
+    .domain(data.map((d) => d.categoryLabel))
     .range(COLOR_PALETTES.categorical);
 
   // Axes
@@ -2765,7 +2870,8 @@ function renderDemographicChart() {
     .call(d3.axisBottom(x))
     .selectAll("text")
     .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end");
+    .style("text-anchor", "end")
+    .style("font-size", "0.85rem");
 
   svg.append("g").attr("class", "axis").call(d3.axisLeft(y));
 
@@ -2782,7 +2888,7 @@ function renderDemographicChart() {
   svg
     .append("text")
     .attr("class", "axis-title")
-    .attr("y", height + 80)
+    .attr("y", height + 110)
     .attr("x", width / 2)
     .style("text-anchor", "middle")
     .text(
@@ -2803,19 +2909,19 @@ function renderDemographicChart() {
     .enter()
     .append("rect")
     .attr("class", "bar")
-    .attr("x", (d) => x(d.category))
+    .attr("x", (d) => x(d.categoryLabel))
     .attr("y", (d) => y(d.prevalence))
     .attr("width", x.bandwidth())
     .attr("height", (d) => height - y(d.prevalence))
-    .attr("fill", (d) => color(d.category))
+    .attr("fill", (d) => color(d.categoryLabel))
     .on("mouseover", function (event, d) {
       tooltip.transition().duration(200).style("opacity", 0.9);
       tooltip
         .html(
           `
-        <strong>${d.category}</strong><br/>
+        <strong>${d.categoryLabel}</strong><br/>
         Prevalence: ${d.prevalence.toFixed(2)}%<br/>
-        Cases: ${d.cases} / ${d.total}
+        Cases: ${d.cases.toLocaleString()} / ${d.total.toLocaleString()}
       `,
         )
         .style("left", event.pageX + 10 + "px")
@@ -2881,7 +2987,7 @@ function renderCorrelationChart() {
   });
 
   // Create heatmap
-  const margin = { top: 100, right: 40, bottom: 100, left: 120 };
+  const margin = { top: 110, right: 40, bottom: 100, left: 120 };
   const width =
     container.node().getBoundingClientRect().width - margin.left - margin.right;
   const cellSize = Math.min(width / riskFactors.length, 100);
@@ -2982,7 +3088,7 @@ function renderCorrelationChart() {
     .append("text")
     .attr("class", "axis-title")
     .attr("x", (cellSize * riskFactors.length) / 2)
-    .attr("y", -60)
+    .attr("y", -80)
     .style("text-anchor", "middle")
     .style("font-size", "1.1rem")
     .text("Risk Factor Co-occurrence Matrix");
