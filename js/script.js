@@ -611,21 +611,26 @@ function switchView(view) {
 async function loadData() {
   try {
     // Load CSV data
-    const data = await d3.csv("data/BRFSS_2024_full.csv", (d) => ({
-      age_group: d._AGE_G || d.age_group,
-      state: d._STATE || d.state,
-      sex: d.SEX || d.sex,
-      income: d.INCOME3 || d.income,
-      education: d._EDUCAG || d.education,
-      race: d._RACE || d.race,
-      has_stroke: +d.CVDSTRK3 === 1,
-      is_smoker: +d._RFSMOK3 === 1,
-      has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
-      has_prediabetes: +d.PREDIAB2 === 1,
-      is_obese: +d._RFBMI5 === 1,
-      has_heart_disease: +d.CVDCRHD4 === 1,
-      bmi: +d._BMI5 || null,
-    }));
+    const data = await d3.csv(
+      //"data/BRFSS_2024_full.csv",
+      "https://raw.githubusercontent.com/ShahriyarHridoy/D3-js_Interactive-Visualization-with-BRFSS_2024_Dataset/main/data/BRFSS_small_100000_data.csv?v1",
+
+      (d) => ({
+        age_group: d._AGE_G || d.age_group,
+        state: d._STATE || d.state,
+        sex: d.SEX || d.sex,
+        income: d.INCOME3 || d.income,
+        education: d._EDUCAG || d.education,
+        race: d._RACE || d.race,
+        has_stroke: +d.CVDSTRK3 === 1,
+        is_smoker: +d._RFSMOK3 === 1,
+        has_diabetes: +d.DIABETE4 === 1 || +d.DIABETE4 === 2,
+        has_prediabetes: +d.PREDIAB2 === 1,
+        is_obese: +d._RFBMI5 === 1,
+        has_heart_disease: +d.CVDCRHD4 === 1,
+        bmi: +d._BMI5 || null,
+      }),
+    );
 
     globalData = data.filter((d) => d.age_group);
     allRecords = globalData; // For Risk Factor Analysis
