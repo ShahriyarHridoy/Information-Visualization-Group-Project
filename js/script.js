@@ -1577,7 +1577,7 @@ function renderGeographicMap() {
   const projection = d3
     .geoAlbersUsa()
     .translate([width / 2, height / 2])
-    .scale(width * 1.2);
+    .scale(width * 1.15);
 
   const path = d3.geoPath().projection(projection);
 
